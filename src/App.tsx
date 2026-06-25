@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // Auth Gateway and Firebase Imports
 import AuthGateway from './components/AuthGateway';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { db, handleFirestoreError, OperationType, firebaseError } from './firebase';
 
 // Default tasks to ensure the dashboard looks complete and premium on load
 const INITIAL_TASKS: Task[] = [
@@ -690,6 +690,38 @@ export default function App() {
       root.classList.remove('theme-transitioning');
     }, 300);
   };
+
+  if (firebaseError) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 p-8 rounded-2xl shadow-2xl space-y-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500">
+            <AlertOctagon className="h-6 w-6" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold tracking-tight text-neutral-100">
+              Firebase Configuration Required
+            </h2>
+            <p className="text-xs text-neutral-400 leading-relaxed font-mono">
+              {firebaseError}
+            </p>
+          </div>
+          <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-850 text-left space-y-2 font-mono text-[10px] text-neutral-500 leading-normal">
+            <p className="text-neutral-400 font-semibold uppercase tracking-wider mb-1">🛠️ How to resolve in Vercel:</p>
+            <p>1. Go to your Vercel Project Dashboard ➔ Settings ➔ Environment Variables.</p>
+            <p>2. Add the following keys with values from your Firebase Console:</p>
+            <ul className="list-disc pl-4 space-y-1 mt-1 text-neutral-400">
+              <li>VITE_FIREBASE_API_KEY</li>
+              <li>VITE_FIREBASE_PROJECT_ID</li>
+              <li>VITE_FIREBASE_AUTH_DOMAIN</li>
+              <li>VITE_FIREBASE_DATABASE_ID</li>
+            </ul>
+            <p className="mt-2 text-amber-500/80 font-semibold">* Note: In Google AI Studio, this is automatically configured for you via the Firebase tool in the lower-right menu.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <AuthGateway onAuthenticated={handleAuthenticated} theme={theme} />;

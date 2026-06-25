@@ -1,6 +1,6 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
@@ -11,19 +11,38 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || ""
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let appInstance: FirebaseApp | undefined;
+let authInstance: Auth | undefined;
+let dbInstance: Firestore | undefined;
+let googleProviderInstance: GoogleAuthProvider | undefined;
+let firebaseError: string | null = null;
 
-const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || undefined;
+if (!firebaseConfig.apiKey) {
+  firebaseError = "Firebase API Key is missing. Please make sure to add VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc. to your Vercel deployment's environment variables (or configure the project environment).";
+} else {
+  try {
+    appInstance = initializeApp(firebaseConfig);
+    const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || undefined;
+    authInstance = getAuth(appInstance);
+    dbInstance = getFirestore(appInstance, databaseId);
+    googleProviderInstance = new GoogleAuthProvider();
+    googleProviderInstance.setCustomParameters({
+      prompt: "select_account"
+    });
+  } catch (err: any) {
+    console.error("Failed to initialize Firebase:", err);
+    firebaseError = err.message || String(err);
+  }
+}
 
-export const auth = getAuth(app);
-export const db = getFirestore(app, databaseId);
-export const googleProvider = new GoogleAuthProvider();
+export const app = appInstance as any;
+export const auth = authInstance as any;
+export const db = dbInstance as any;
+export const googleProvider = googleProviderInstance as any;
+export { firebaseError };
 
 // Customize Google Provider
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
+// (Already handled in initialization block)
 
 // Structured Firestore error handling for diagnostics and zero-trust verification
 export enum OperationType {
