@@ -304,6 +304,7 @@ export default function App() {
 
   // If there's an active user session, auto-fetch their data on mount
   useEffect(() => {
+    if (firebaseError) return;
     if (user && !initialLoadCompleted.current) {
       fetchUserData(user.email);
     }
@@ -311,6 +312,7 @@ export default function App() {
 
   // Save State Changes to Cloud Firestore
   useEffect(() => {
+    if (firebaseError) return;
     if (user && initialLoadCompleted.current) {
       const saveToFirestore = async () => {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
