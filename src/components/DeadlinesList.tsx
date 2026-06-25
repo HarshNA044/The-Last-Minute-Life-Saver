@@ -215,7 +215,7 @@ export default function DeadlinesList({
     const filteredDayTasks = getFilteredTasks(tasks, dateStr);
     
     const total = dayTasks.length;
-    const completed = dayTasks.filter(t => t.status === 'completed').length;
+    const completed = dayTasks.filter(t => t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))).length;
     
     // Subtasks counters
     let totalSubs = 0;
@@ -244,7 +244,7 @@ export default function DeadlinesList({
     const monthTasks = tasks.filter(t => getNormalizedDate(t.originalDeadline).startsWith(prefix));
     
     const total = monthTasks.length;
-    const completed = monthTasks.filter(t => t.status === 'completed').length;
+    const completed = monthTasks.filter(t => t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))).length;
 
     let totalSubs = 0;
     let completedSubs = 0;
@@ -814,7 +814,7 @@ export default function DeadlinesList({
                             let dotColor = 'bg-sky-400';
                             if (t.priority === 'critical') dotColor = 'bg-rose-500';
                             else if (t.priority === 'high') dotColor = 'bg-amber-500';
-                            else if (t.status === 'completed') dotColor = 'bg-emerald-400';
+                            else if (t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))) dotColor = 'bg-emerald-400';
 
                             return (
                               <span 

@@ -3,6 +3,34 @@ import { Send, Bot, User, Sparkles, MessageSquare, AlertTriangle, Zap } from 'lu
 import { motion, AnimatePresence } from 'motion/react';
 import { ChatMessage, Task } from '../types';
 
+// Robust helper to parse and format text bolded by asterisks (*bold* or **bold**)
+const parseAsterisks = (text: string, isUser: boolean) => {
+  if (!text) return "";
+  // Split on double asterisks first
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return (
+        <strong key={`double-${i}`} className={isUser ? "font-bold text-neutral-950" : "font-semibold text-amber-500 dark:text-amber-400"}>
+          {part}
+        </strong>
+      );
+    }
+    // Now split any remaining single asterisks
+    const subParts = part.split(/\*([^*]+)\*/g);
+    return subParts.map((subPart, j) => {
+      if (j % 2 === 1) {
+        return (
+          <strong key={`single-${j}`} className={isUser ? "font-bold text-neutral-950" : "font-semibold text-amber-500 dark:text-amber-400"}>
+            {subPart}
+          </strong>
+        );
+      }
+      return subPart;
+    });
+  });
+};
+
 interface ChatAssistantProps {
   currentTasks: Task[];
   onTriggerOptimization: () => void;
@@ -139,7 +167,7 @@ export default function ChatAssistant({
                     ? 'bg-amber-500 text-neutral-950 rounded-tr-none font-medium'
                     : 'bg-neutral-950 text-neutral-200 border border-neutral-800/60 rounded-tl-none font-sans'
                 }`}>
-                  {msg.text}
+                  {parseAsterisks(msg.text, msg.role === 'user')}
                 </div>
                 <div className="flex items-center gap-2 mt-1 px-1">
                   <span className="text-[9px] text-neutral-500 font-mono">{msg.timestamp}</span>

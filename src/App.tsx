@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import SyllabusUploader from './components/SyllabusUploader';
 import DeadlinesList from './components/DeadlinesList';
@@ -11,6 +11,11 @@ import Analytics from './components/Analytics';
 import { Task, CalendarBlock, AgentLog, SubTask } from './types';
 import { ShieldCheck, HelpCircle, Activity, Sparkles, AlertOctagon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// Auth Gateway and Firebase Imports
+import AuthGateway from './components/AuthGateway';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 // Default tasks to ensure the dashboard looks complete and premium on load
 const INITIAL_TASKS: Task[] = [
@@ -87,7 +92,74 @@ const INITIAL_LOGS: AgentLog[] = [
   }
 ];
 
+// Helper to play highly optimized and realistic ring chime sounds using the Web Audio API
+const playRingSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    const playPulse = (startTime: number) => {
+      // High chime
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, startTime); // A5
+      osc1.frequency.exponentialRampToValueAtTime(1320, startTime + 0.1); // E6
+      gain1.gain.setValueAtTime(0.12, startTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(startTime);
+      osc1.stop(startTime + 0.3);
+
+      // Warm background resonance
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(440, startTime + 0.05); // A4
+      osc2.frequency.exponentialRampToValueAtTime(880, startTime + 0.15); // A5
+      gain2.gain.setValueAtTime(0.08, startTime + 0.05);
+      gain2.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(startTime + 0.05);
+      osc2.stop(startTime + 0.35);
+    };
+
+    const now = ctx.currentTime;
+    playPulse(now);          // Ring pulse 1
+    playPulse(now + 0.4);    // Ring pulse 2
+  } catch (err) {
+    console.warn("Failed to play ring sound via AudioContext:", err);
+  }
+};
+
+const getAlreadyNotified = (): string[] => {
+  try {
+    const saved = localStorage.getItem('life_saver_notified_deadlines');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const markAsNotified = (taskId: string) => {
+  try {
+    const notified = getAlreadyNotified();
+    if (!notified.includes(taskId)) {
+      localStorage.setItem('life_saver_notified_deadlines', JSON.stringify([...notified, taskId]));
+    }
+  } catch {}
+};
+
 export default function App() {
+  const [user, setUser] = useState<{ email: string; displayName: string } | null>(() => {
+    const saved = localStorage.getItem('life_saver_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const initialLoadCompleted = useRef<boolean>(false);
+
   const [autopilot, setAutopilot] = useState<boolean>(() => {
     const saved = localStorage.getItem('life_saver_autopilot');
     return saved ? JSON.parse(saved) : true;
@@ -122,7 +194,24 @@ export default function App() {
     return 'light';
   });
 
-  // Sync to local storage
+  // Keep references to current state values to prevent recreation of auth state listener
+  const latestTasks = useRef<Task[]>(tasks);
+  const latestBlocks = useRef<CalendarBlock[]>(blocks);
+  const latestAutopilot = useRef<boolean>(autopilot);
+
+  useEffect(() => {
+    latestTasks.current = tasks;
+  }, [tasks]);
+
+  useEffect(() => {
+    latestBlocks.current = blocks;
+  }, [blocks]);
+
+  useEffect(() => {
+    latestAutopilot.current = autopilot;
+  }, [autopilot]);
+
+  // Sync to local storage as local fallback
   useEffect(() => {
     localStorage.setItem('life_saver_autopilot', JSON.stringify(autopilot));
   }, [autopilot]);
@@ -138,6 +227,102 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('life_saver_logs', JSON.stringify(logs));
   }, [logs]);
+
+  // Helper to add system log entries
+  const addSystemLog = useCallback((text: string, type: 'info' | 'optimizing' | 'tracking' | 'scheduled' | 'warning' | 'alert') => {
+    const now = new Date();
+    const isNowShort = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const newLog: AgentLog = {
+      id: Math.random().toString(),
+      timestamp: isNowShort,
+      text,
+      type
+    };
+    setLogs((prev) => [newLog, ...prev]);
+  }, []);
+
+  // Helper to fetch user's saved data from Firestore
+  const fetchUserData = useCallback(async (userEmail: string) => {
+    try {
+      setIsProcessing(true);
+      const emailLower = userEmail.trim().toLowerCase();
+      const userDocRef = doc(db, "users", emailLower);
+      const docSnap = await getDoc(userDocRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.tasks) setTasks(data.tasks);
+        if (data.blocks) setBlocks(data.blocks);
+        if (data.autopilot !== undefined) setAutopilot(data.autopilot);
+        addSystemLog("Workspace synced perfectly with Google Cloud.", "info");
+      } else {
+        // First login/registration or fresh start: save defaults
+        await setDoc(userDocRef, {
+          email: emailLower,
+          displayName: user?.displayName || 'Life Saver',
+          tasks: latestTasks.current,
+          blocks: latestBlocks.current,
+          autopilot: latestAutopilot.current,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        addSystemLog("Initialized your safe space on the secure cloud.", "info");
+      }
+    } catch (err: any) {
+      console.error("Error reading/writing user doc:", err);
+      addSystemLog(`Failed to sync cloud database: ${err.message || err}`, "warning");
+    } finally {
+      setIsProcessing(false);
+      initialLoadCompleted.current = true;
+    }
+  }, [addSystemLog]);
+
+  // If there's an active user session, auto-fetch their data on mount
+  useEffect(() => {
+    if (user && !initialLoadCompleted.current) {
+      fetchUserData(user.email);
+    }
+  }, [user, fetchUserData]);
+
+  // Save State Changes to Cloud Firestore
+  useEffect(() => {
+    if (user && initialLoadCompleted.current) {
+      const saveToFirestore = async () => {
+        try {
+          const emailLower = user.email.trim().toLowerCase();
+          const userDocRef = doc(db, "users", emailLower);
+          await setDoc(userDocRef, {
+            tasks,
+            blocks,
+            autopilot,
+            email: user.email,
+            displayName: user.displayName,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (err) {
+          console.error("Failed to save state to Firestore:", err);
+        }
+      };
+      
+      // Debounce saving to prevent fast successive writes
+      const timeoutId = setTimeout(saveToFirestore, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [tasks, blocks, autopilot, user]);
+
+  const handleAuthenticated = (authUser: { email: string; displayName: string }) => {
+    setUser(authUser);
+    localStorage.setItem('life_saver_user', JSON.stringify(authUser));
+    fetchUserData(authUser.email);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('life_saver_user');
+    initialLoadCompleted.current = false;
+    setTasks(INITIAL_TASKS);
+    setBlocks(INITIAL_BLOCKS);
+    addSystemLog("Signed out securely. Reset to default environment view.", "info");
+  };
 
   // Synchronize CSS class with current theme state
   useEffect(() => {
@@ -163,18 +348,81 @@ export default function App() {
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, []);
 
-  // Helper to add system log entries
-  const addSystemLog = useCallback((text: string, type: 'info' | 'optimizing' | 'tracking' | 'scheduled' | 'warning' | 'alert') => {
+  // Request notification permission on first visit
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            addSystemLog("Device notifications enabled! We will alert you of upcoming deadlines.", "info");
+          }
+        }).catch((err) => {
+          console.warn("Notification permission request failed:", err);
+        });
+      }
+    }
+  }, [addSystemLog]);
+
+  // Check for tasks with deadlines approaching within 24 hours
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) return;
+
     const now = new Date();
-    const isNowShort = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const newLog: AgentLog = {
-      id: Math.random().toString(),
-      timestamp: isNowShort,
-      text,
-      type
-    };
-    setLogs((prev) => [newLog, ...prev]);
-  }, []);
+    const notifiedList = getAlreadyNotified();
+    let hasNewAlert = false;
+
+    tasks.forEach((task) => {
+      if (task.status === 'completed') return;
+      if (notifiedList.includes(task.id)) return;
+
+      // Parse the deadline safely
+      let deadline: Date | null = null;
+      if (task.originalDeadline && task.originalDeadline.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const parts = task.originalDeadline.split('-');
+        deadline = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59);
+      } else if (task.originalDeadline) {
+        const parsed = Date.parse(task.originalDeadline);
+        if (!isNaN(parsed)) {
+          deadline = new Date(parsed);
+        }
+      }
+
+      if (deadline) {
+        const diffMs = deadline.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        // Notify if it is due in less than 24 hours (and not already past by more than 2 hours to avoid stale alerts)
+        if (diffHours > -2 && diffHours <= 24) {
+          hasNewAlert = true;
+          markAsNotified(task.id);
+
+          const hoursLeft = Math.max(0, Math.ceil(diffHours));
+          const alertMessage = hoursLeft > 0 
+            ? `CRITICAL DEADLINE INBOUND: "${task.title}" is due in less than ${hoursLeft} hours! Action required.`
+            : `CRITICAL DEADLINE INBOUND: "${task.title}" is due TODAY! Action required.`;
+
+          // 1. Add to system log
+          addSystemLog(alertMessage, 'alert');
+
+          // 2. Sent browser device notification
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification("Deadline Approaching! 🚨", {
+                body: alertMessage,
+                tag: task.id // avoid duplicate system notifications
+              });
+            } catch (e) {
+              console.warn("Notification failed to trigger", e);
+            }
+          }
+        }
+      }
+    });
+
+    if (hasNewAlert) {
+      playRingSound();
+    }
+  }, [tasks, addSystemLog]);
 
   // Extract from Syllabus callback
   const handleExtractTasks = (extractedTasks: any[]) => {
@@ -307,7 +555,12 @@ export default function App() {
             }
             return st;
           });
-          return { ...t, subtasks: updatedSubs };
+          const allCompleted = updatedSubs.length > 0 && updatedSubs.every(st => st.completed);
+          return { 
+            ...t, 
+            subtasks: updatedSubs,
+            status: allCompleted ? 'completed' : 'backlog'
+          };
         }
         return t;
       })
@@ -347,11 +600,14 @@ export default function App() {
             setTasks((prevTasks) =>
               prevTasks.map((t) => {
                 if (t.id === b.taskId) {
+                  const updatedSubs = t.subtasks.map((st) => 
+                    st.id === b.subTaskId ? { ...st, completed: nextVal } : st
+                  );
+                  const allCompleted = updatedSubs.length > 0 && updatedSubs.every(st => st.completed);
                   return {
                     ...t,
-                    subtasks: t.subtasks.map((st) => 
-                      st.id === b.subTaskId ? { ...st, completed: nextVal } : st
-                    )
+                    subtasks: updatedSubs,
+                    status: allCompleted ? 'completed' : 'backlog'
                   };
                 }
                 return t;
@@ -394,9 +650,18 @@ export default function App() {
   };
 
   const handleToggleTheme = () => {
+    const root = window.document.documentElement;
+    root.classList.add('theme-transitioning');
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
     addSystemLog(`User toggled application visual theme mode.`, 'info');
+    setTimeout(() => {
+      root.classList.remove('theme-transitioning');
+    }, 300);
   };
+
+  if (!user) {
+    return <AuthGateway onAuthenticated={handleAuthenticated} theme={theme} />;
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-white" id="main-application-frame">
@@ -408,6 +673,9 @@ export default function App() {
         isProcessing={isProcessing}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        user={user}
+        onLogin={() => {}}
+        onLogout={handleLogout}
       />
 
       {/* Primary Dashboard Body Layout */}

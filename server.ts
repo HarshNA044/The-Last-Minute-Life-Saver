@@ -69,6 +69,17 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// API Route: OTP delivery console simulator
+app.post("/api/auth/send-otp", (req, res) => {
+  const { email, otp } = req.body;
+  console.log("\n========================================================");
+  console.log(`[AUTH SERVICE] PASSWORD RESET SECURITY OTP EN ROUTE:`);
+  console.log(`Destination: ${email}`);
+  console.log(`Security Code: ${otp}`);
+  console.log("========================================================\n");
+  res.json({ success: true, message: "Security OTP successfully printed to server console and sent." });
+});
+
 // API Route: Extraction of Tasks from files or syllabus texts
 app.post("/api/gemini/analyze", async (req, res) => {
   try {

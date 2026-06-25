@@ -80,7 +80,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
 
   // 1. General stats calculations
   const totalTasksCount = tasks.length;
-  const completedTasksCount = tasks.filter(t => t.status === 'completed').length;
+  const completedTasksCount = tasks.filter(t => t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))).length;
   
   let totalSubtasks = 0;
   let completedSubtasks = 0;
@@ -227,7 +227,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
     const rate = totalSubs > 0 ? Math.round((completedSubs / totalSubs) * 100) : 0;
     return {
       totalTasks: dayTasks.length,
-      completedTasks: dayTasks.filter(t => t.status === 'completed').length,
+      completedTasks: dayTasks.filter(t => t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))).length,
       totalSubs,
       completedSubs,
       rate
@@ -250,7 +250,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
     const rate = totalSubs > 0 ? Math.round((completedSubs / totalSubs) * 100) : 0;
     return {
       totalTasks: monthTasks.length,
-      completedTasks: monthTasks.filter(t => t.status === 'completed').length,
+      completedTasks: monthTasks.filter(t => t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))).length,
       totalSubs,
       completedSubs,
       rate

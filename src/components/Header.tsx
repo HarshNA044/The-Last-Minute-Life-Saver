@@ -9,11 +9,18 @@ interface HeaderProps {
   isProcessing: boolean;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  user: any;
+  onLogin: () => void;
+  onLogout: () => void;
 }
 
-export default function Header({ autopilot, setAutopilot, statusText, isProcessing, theme, onToggleTheme }: HeaderProps) {
+export default function Header({ autopilot, setAutopilot, statusText, isProcessing, theme, onToggleTheme, user, onLogin, onLogout }: HeaderProps) {
   return (
-    <header className="relative w-full border-b border-neutral-850 bg-neutral-950/80 backdrop-blur-md py-4 px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-40">
+    <header className={`relative w-full border-b border-neutral-850 py-4 px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-40 transition-all duration-150 ${
+      theme === 'dark' 
+        ? 'bg-neutral-950/80 backdrop-blur-md' 
+        : 'bg-neutral-900 shadow-sm'
+    }`}>
       {/* Brand Logo & Name */}
       <div className="flex items-center gap-3">
         <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-800 shadow-lg shadow-neutral-950 overflow-hidden">
@@ -92,6 +99,26 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
 
       {/* Control Switch */}
       <div className="flex items-center gap-3">
+        {/* User profile details */}
+        {user && (
+          <div className="flex items-center gap-2 bg-neutral-900 pr-3.5 pl-1.5 py-1.5 rounded-xl border border-neutral-800/80 shadow-sm animate-fade-in">
+            <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-xs border border-amber-500/25">
+              {user.displayName ? user.displayName[0].toUpperCase() : 'U'}
+            </div>
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="font-sans text-xs font-semibold text-neutral-200 truncate max-w-[100px]">
+                {user.displayName}
+              </span>
+            </div>
+            <button
+              onClick={onLogout}
+              className="text-[10px] font-mono text-neutral-500 hover:text-rose-400 transition-colors cursor-pointer ml-1.5 border border-neutral-800/80 px-1.5 py-0.5 rounded-md hover:border-rose-500/20 bg-neutral-950/40"
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
+
         {/* Theme Toggle Button */}
         <button
           onClick={onToggleTheme}
