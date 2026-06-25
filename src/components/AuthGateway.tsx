@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KeyRound, Mail, User, ShieldCheck, ArrowRight, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 
 // Native SHA-256 helper for high-performance secure client-side hashing
 async function hashPassword(password: string): Promise<string> {
@@ -64,13 +64,26 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setError('Please check your internet connection. Authentication requires an active network.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
     try {
       const emailLower = email.trim().toLowerCase();
       const userRef = doc(db, 'users', emailLower);
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (getErr: any) {
+        if (getErr.message?.includes('permission') || getErr.message?.includes('Permission')) {
+          handleFirestoreError(getErr, OperationType.GET, `users/${emailLower}`);
+        }
+        throw getErr;
+      }
       
       if (!userSnap.exists()) {
         setError('No account found with this email.');
@@ -111,13 +124,26 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setError('Please check your internet connection. Authentication requires an active network.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
     try {
       const emailLower = email.trim().toLowerCase();
       const userRef = doc(db, 'users', emailLower);
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (getErr: any) {
+        if (getErr.message?.includes('permission') || getErr.message?.includes('Permission')) {
+          handleFirestoreError(getErr, OperationType.GET, `users/${emailLower}`);
+        }
+        throw getErr;
+      }
       
       if (userSnap.exists()) {
         setError('An account with this email already exists.');
@@ -128,12 +154,19 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       const passHash = await hashPassword(password);
       
       // Save secure user entry in Firestore
-      await setDoc(userRef, {
-        email: emailLower,
-        displayName: displayName.trim(),
-        passwordHash: passHash,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(userRef, {
+          email: emailLower,
+          displayName: displayName.trim(),
+          passwordHash: passHash,
+          createdAt: new Date().toISOString()
+        });
+      } catch (setErr: any) {
+        if (setErr.message?.includes('permission') || setErr.message?.includes('Permission')) {
+          handleFirestoreError(setErr, OperationType.WRITE, `users/${emailLower}`);
+        }
+        throw setErr;
+      }
       
       setSuccessMsg('Account registered successfully! Welcome.');
       setTimeout(() => {
@@ -158,6 +191,11 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setError('Please check your internet connection. Authentication requires an active network.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
@@ -166,7 +204,15 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       
       // Confirm user actually exists in users database
       const userRef = doc(db, 'users', emailLower);
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (getErr: any) {
+        if (getErr.message?.includes('permission') || getErr.message?.includes('Permission')) {
+          handleFirestoreError(getErr, OperationType.GET, `users/${emailLower}`);
+        }
+        throw getErr;
+      }
       
       if (!userSnap.exists()) {
         setError('Email is not registered in our database.');
@@ -180,25 +226,46 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       
       // Save to Firebase firestore password_resets collection
       const resetRef = doc(db, 'password_resets', emailLower);
-      await setDoc(resetRef, {
-        otp: generatedOtp,
-        expiresAt
-      });
-      
-      // Trigger Node.js server API to output OTP to console
       try {
-        await fetch('/api/auth/send-otp', {
+        await setDoc(resetRef, {
+          otp: generatedOtp,
+          expiresAt
+        });
+      } catch (setErr: any) {
+        if (setErr.message?.includes('permission') || setErr.message?.includes('Permission')) {
+          handleFirestoreError(setErr, OperationType.WRITE, `password_resets/${emailLower}`);
+        }
+        throw setErr;
+      }
+      
+      // Trigger Node.js server API to deliver OTP
+      try {
+        const response = await fetch('/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailLower, otp: generatedOtp })
         });
-      } catch (apiErr) {
-        console.warn("API route notice: Node console output failed, showing on UI.", apiErr);
+        const resData = await response.json();
+        if (resData.success) {
+          if (resData.simulated) {
+            setSuccessMsg(`OTP sent to console for dev preview: ${generatedOtp}`);
+          } else {
+            setSuccessMsg(`OTP sent successfully to your email!`);
+          }
+        } else {
+          setError(resData.message || 'Apps Script email delivery failed.');
+          setLoading(false);
+          return;
+        }
+      } catch (apiErr: any) {
+        console.warn("API route notice: OTP delivery failed.", apiErr);
+        setError('Failed to send OTP via backend service.');
+        setLoading(false);
+        return;
       }
       
       // Show OTP simulated toast in browser for perfect developer testing
       setSimulatedEmailOtp(generatedOtp);
-      setSuccessMsg(`OTP sent successfully to ${emailLower}!`);
       setForgotStage('enter_otp');
     } catch (err: any) {
       console.error(err);
@@ -216,13 +283,26 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setError('Please check your internet connection. Authentication requires an active network.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
     try {
       const emailLower = email.trim().toLowerCase();
       const resetRef = doc(db, 'password_resets', emailLower);
-      const resetSnap = await getDoc(resetRef);
+      let resetSnap;
+      try {
+        resetSnap = await getDoc(resetRef);
+      } catch (getErr: any) {
+        if (getErr.message?.includes('permission') || getErr.message?.includes('Permission')) {
+          handleFirestoreError(getErr, OperationType.GET, `password_resets/${emailLower}`);
+        }
+        throw getErr;
+      }
       
       if (!resetSnap.exists()) {
         setError('OTP session expired. Please request another code.');
@@ -270,6 +350,11 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setError('Please check your internet connection. Authentication requires an active network.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
@@ -279,16 +364,38 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       
       // Update password hash in users collection
       const userRef = doc(db, 'users', emailLower);
-      await setDoc(userRef, { passwordHash: newHash }, { merge: true });
+      try {
+        await setDoc(userRef, { passwordHash: newHash }, { merge: true });
+      } catch (setErr: any) {
+        if (setErr.message?.includes('permission') || setErr.message?.includes('Permission')) {
+          handleFirestoreError(setErr, OperationType.WRITE, `users/${emailLower}`);
+        }
+        throw setErr;
+      }
       
       // Clean up verification collection doc
       const resetRef = doc(db, 'password_resets', emailLower);
-      await deleteDoc(resetRef);
+      try {
+        await deleteDoc(resetRef);
+      } catch (delErr: any) {
+        if (delErr.message?.includes('permission') || delErr.message?.includes('Permission')) {
+          handleFirestoreError(delErr, OperationType.DELETE, `password_resets/${emailLower}`);
+        }
+        throw delErr;
+      }
       
       setSuccessMsg('Your password has been reset! Logging you in...');
       
       // Fetch user profile to login
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (getErr: any) {
+        if (getErr.message?.includes('permission') || getErr.message?.includes('Permission')) {
+          handleFirestoreError(getErr, OperationType.GET, `users/${emailLower}`);
+        }
+        throw getErr;
+      }
       if (userSnap.exists()) {
         const userData = userSnap.data();
         setTimeout(() => {
@@ -307,9 +414,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
   };
 
   return (
-    <div className={`min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-150 ${
-      theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-50 text-neutral-800'
-    }`}>
+    <div className="min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-150 bg-neutral-950 text-neutral-100">
       
       {/* Decorative Top Accent Card */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-rose-500 to-sky-500" />
@@ -319,20 +424,14 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className={`w-full max-w-md p-8 rounded-2xl border shadow-xl flex flex-col relative overflow-hidden ${
-          theme === 'dark' 
-            ? 'bg-neutral-900/90 border-neutral-800 backdrop-blur-md' 
-            : 'bg-white border-neutral-200'
-        }`}
+        className="w-full max-w-md p-8 rounded-2xl border border-neutral-850 shadow-xl flex flex-col relative overflow-hidden bg-neutral-900/90 backdrop-blur-md"
       >
         {/* Brand Banner Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20 shadow-inner">
             <ShieldCheck className="w-6 h-6 animate-pulse" />
           </div>
-          <h2 className={`text-2xl font-bold font-sans tracking-tight ${
-            theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'
-          }`}>
+          <h2 className="text-2xl font-bold font-sans tracking-tight text-neutral-100">
             {mode === 'login' && 'Access Life Saver'}
             {mode === 'signup' && 'Create Free Account'}
             {mode === 'forgot_password' && 'Password Recovery'}
@@ -386,11 +485,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className={`block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                    theme === 'dark' 
-                      ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                      : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                  }`}
+                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                 />
               </div>
             </div>
@@ -416,11 +511,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className={`block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                    theme === 'dark' 
-                      ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                      : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                  }`}
+                  className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                 />
                 <button
                   type="button"
@@ -435,7 +526,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-neutral-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
             >
               {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -463,11 +554,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="John Doe"
-                  className={`block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                    theme === 'dark' 
-                      ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                      : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                  }`}
+                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                 />
               </div>
             </div>
@@ -484,11 +571,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className={`block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                    theme === 'dark' 
-                      ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                      : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                  }`}
+                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                 />
               </div>
             </div>
@@ -505,11 +588,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
-                  className={`block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                    theme === 'dark' 
-                      ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                      : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                  }`}
+                  className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                 />
                 <button
                   type="button"
@@ -524,13 +603,13 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-neutral-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
             >
               {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <span>Create Cloud Account</span>
+                  <span>Create Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -557,11 +636,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
-                      className={`block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                        theme === 'dark' 
-                          ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                          : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                      }`}
+                      className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                     />
                   </div>
                 </div>
@@ -569,7 +644,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-neutral-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg"
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg text-slate-955 text-slate-955 text-slate-955 text-slate-955 text-slate-950"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Request Verification OTP</span>}
                 </button>
@@ -590,18 +665,14 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="e.g. 123456"
-                    className={`block w-full text-center tracking-[1em] text-lg py-3 rounded-xl border font-mono focus:outline-none transition-all duration-150 ${
-                      theme === 'dark' 
-                        ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                        : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                    }`}
+                    className="block w-full text-center tracking-[1em] text-lg py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 font-mono focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-neutral-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg"
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg text-slate-950"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Verify Security OTP</span>}
                 </button>
@@ -635,11 +706,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      className={`block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                        theme === 'dark' 
-                          ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                          : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                      }`}
+                      className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                     />
                   </div>
                 </div>
@@ -656,11 +723,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Re-type password"
-                      className={`block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none transition-all duration-150 ${
-                        theme === 'dark' 
-                          ? 'bg-neutral-950/50 border-neutral-800 text-neutral-100 focus:border-amber-500/50' 
-                          : 'bg-neutral-50 border-neutral-200 text-neutral-900 focus:border-amber-500/50'
-                      }`}
+                      className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
                     />
                   </div>
                 </div>
@@ -668,7 +731,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-neutral-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg"
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg text-slate-950"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Update and Save Password</span>}
                 </button>
@@ -687,9 +750,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
 
         {/* Dynamic Mode Switch Footer links */}
         {mode !== 'forgot_password' && (
-          <div className={`mt-8 pt-6 border-t flex justify-between items-center text-xs ${
-            theme === 'dark' ? 'border-neutral-800/80' : 'border-neutral-100'
-          }`}>
+          <div className="mt-8 pt-6 border-t border-neutral-850 flex justify-between items-center text-xs">
             <span className="text-neutral-500">
               {mode === 'login' ? "Don't have an account?" : "Already registered?"}
             </span>

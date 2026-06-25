@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // Auth Gateway and Firebase Imports
 import AuthGateway from './components/AuthGateway';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, handleFirestoreError, OperationType } from './firebase';
 
 // Default tasks to ensure the dashboard looks complete and premium on load
 const INITIAL_TASKS: Task[] = [
@@ -243,6 +243,12 @@ export default function App() {
 
   // Helper to fetch user's saved data from Firestore
   const fetchUserData = useCallback(async (userEmail: string) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      addSystemLog("Offline: running on local backup workspace.", "info");
+      initialLoadCompleted.current = true;
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const emailLower = userEmail.trim().toLowerCase();
@@ -257,24 +263,44 @@ export default function App() {
         addSystemLog("Workspace synced perfectly with Google Cloud.", "info");
       } else {
         // First login/registration or fresh start: save defaults
-        await setDoc(userDocRef, {
-          email: emailLower,
-          displayName: user?.displayName || 'Life Saver',
-          tasks: latestTasks.current,
-          blocks: latestBlocks.current,
-          autopilot: latestAutopilot.current,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        try {
+          await setDoc(userDocRef, {
+            email: emailLower,
+            displayName: user?.displayName || 'Life Saver',
+            tasks: latestTasks.current,
+            blocks: latestBlocks.current,
+            autopilot: latestAutopilot.current,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (setErr: any) {
+          if (setErr.message?.includes('permission') || setErr.message?.includes('Permission')) {
+            handleFirestoreError(setErr, OperationType.WRITE, `users/${emailLower}`);
+          }
+          throw setErr;
+        }
         addSystemLog("Initialized your safe space on the secure cloud.", "info");
       }
     } catch (err: any) {
       console.error("Error reading/writing user doc:", err);
-      addSystemLog(`Failed to sync cloud database: ${err.message || err}`, "warning");
+      const isOfflineError = 
+        err.message?.includes('offline') || 
+        err.message?.includes('network') || 
+        err.code === 'unavailable' || 
+        err.message?.includes('network connection');
+      
+      if (isOfflineError) {
+        addSystemLog("Running in offline mode: loaded workspace from local backup.", "info");
+      } else {
+        addSystemLog(`Failed to sync cloud database: ${err.message || err}`, "warning");
+        if (err.message?.includes('permission') || err.message?.includes('Permission')) {
+          handleFirestoreError(err, OperationType.GET, `users/${userEmail}`);
+        }
+      }
     } finally {
       setIsProcessing(false);
       initialLoadCompleted.current = true;
     }
-  }, [addSystemLog]);
+  }, [addSystemLog, user?.displayName]);
 
   // If there's an active user session, auto-fetch their data on mount
   useEffect(() => {
@@ -287,6 +313,9 @@ export default function App() {
   useEffect(() => {
     if (user && initialLoadCompleted.current) {
       const saveToFirestore = async () => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          return; // Skip saving to cloud while offline to prevent persistent offline errors
+        }
         try {
           const emailLower = user.email.trim().toLowerCase();
           const userDocRef = doc(db, "users", emailLower);
@@ -298,8 +327,11 @@ export default function App() {
             displayName: user.displayName,
             updatedAt: new Date().toISOString()
           }, { merge: true });
-        } catch (err) {
+        } catch (err: any) {
           console.error("Failed to save state to Firestore:", err);
+          if (err.message?.includes('permission') || err.message?.includes('Permission')) {
+            handleFirestoreError(err, OperationType.WRITE, `users/${user.email.trim().toLowerCase()}`);
+          }
         }
       };
       

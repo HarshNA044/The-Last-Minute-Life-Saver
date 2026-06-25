@@ -69,15 +69,68 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// API Route: OTP delivery console simulator
-app.post("/api/auth/send-otp", (req, res) => {
+// API Route: OTP delivery console simulator and Apps Script dispatcher
+app.post("/api/auth/send-otp", async (req, res) => {
   const { email, otp } = req.body;
   console.log("\n========================================================");
   console.log(`[AUTH SERVICE] PASSWORD RESET SECURITY OTP EN ROUTE:`);
   console.log(`Destination: ${email}`);
   console.log(`Security Code: ${otp}`);
   console.log("========================================================\n");
-  res.json({ success: true, message: "Security OTP successfully printed to server console and sent." });
+
+  const appsScriptUrl = process.env.APPS_SCRIPT_URL;
+  if (appsScriptUrl && appsScriptUrl.trim() !== "") {
+    try {
+      console.log(`[AUTH SERVICE] Forwarding OTP delivery request to Google Apps Script Web App...`);
+      const response = await fetch(appsScriptUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+      
+      const responseText = await response.text();
+      console.log(`[AUTH SERVICE] Apps Script Response status: ${response.status}. Response body:`, responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {
+        responseData = { raw: responseText };
+      }
+      
+      if (response.ok) {
+        res.json({ 
+          success: true, 
+          message: "OTP successfully sent to your email using Google Apps Script!",
+          appsScriptResponse: responseData
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: `Google Apps Script returned an error (status ${response.status}).`,
+          error: responseText
+        });
+      }
+    } catch (fetchErr: any) {
+      console.error(`[AUTH SERVICE] Error communicating with Apps Script:`, fetchErr);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to dispatch email via Google Apps Script.", 
+        error: fetchErr.message || String(fetchErr) 
+      });
+    }
+  } else {
+    // Fallback mode for developer preview / local environment
+    console.warn("[AUTH SERVICE] APPS_SCRIPT_URL is not configured. Falling back to simulator console delivery.");
+    res.json({ 
+      success: true, 
+      message: "Security OTP simulated! Check your developer console or use the automatic helper.", 
+      simulated: true,
+      otp: otp // Keep it working seamlessly in developer preview!
+    });
+  }
 });
 
 // API Route: Extraction of Tasks from files or syllabus texts

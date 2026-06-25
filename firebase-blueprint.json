@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with password hash and local data backup.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Primary email of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The custom display name of the user."
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Secure client-side SHA-256 hash of the password."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp."
+        }
+      },
+      "required": ["email", "displayName"]
+    },
+    "PasswordReset": {
+      "title": "PasswordReset",
+      "description": "Temporary verification OTP data for account password recovery.",
+      "type": "object",
+      "properties": {
+        "otp": {
+          "type": "string",
+          "description": "Generated numeric verification token."
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "ISO expiration timestamp for the OTP."
+        }
+      },
+      "required": ["otp", "expiresAt"]
+    }
+  },
+  "firestore": {
+    "/users/{email}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile store."
+    },
+    "/password_resets/{email}": {
+      "schema": { "$ref": "#/entities/PasswordReset" },
+      "description": "Temporary OTP store."
+    }
+  }
+}

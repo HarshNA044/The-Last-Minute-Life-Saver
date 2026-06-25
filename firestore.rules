@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Secure user documents: Allow direct document actions but deny listing to protect privacy
+    match /users/{email} {
+      allow get, create, update: if true;
+      allow list, delete: if false;
+    }
+    
+    // Secure password resets: Allow lookup, creation, update, and deletion, but deny listing
+    match /password_resets/{email} {
+      allow get, create, update, delete: if true;
+      allow list: if false;
+    }
+  }
+}
