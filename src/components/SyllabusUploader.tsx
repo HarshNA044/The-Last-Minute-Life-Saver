@@ -130,21 +130,21 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
         <div>
           <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
             <FolderOpen className="w-4 h-4 text-amber-500" />
-            Deadline Ingestion Engine
+            Syllabus & Assignment Importer
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            Feed me syllabi text, text prompts, or files, and watch AI build subtasks.
+            Paste course materials, study prompts, or upload a syllabus file to automatically generate structured milestones.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isProcessing ? (
             <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs font-mono text-amber-400">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-              Ingesting Core...
+              Parsing Syllabus...
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-neutral-950/60 rounded-full text-[10px] font-mono text-neutral-500">
-              No limits
+              Active
             </span>
           )}
         </div>
@@ -236,7 +236,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
           <div className="bg-neutral-950/40 rounded-xl p-4 border border-neutral-800/40">
             <h3 className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-neutral-400" />
-              Blueprint Demo Syllabi Templates
+              Practice Syllabi Blueprints
             </h3>
             <div className="flex flex-col gap-3">
               {TEMPLATES.map((item) => (
@@ -247,7 +247,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
                     handleExtractPress(item.content);
                   }}
                   disabled={isProcessing}
-                  className="w-full text-left p-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-900 hover:border-neutral-800 transition-all duration-200 group flex gap-3 cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-850 hover:border-neutral-800 transition-all duration-200 group flex gap-3 cursor-pointer"
                 >
                   <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 shrink-0 text-amber-500 group-hover:text-amber-400 font-mono text-[10px] font-bold">
                     {item.category}
@@ -267,7 +267,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
           <div className="mt-4 flex items-center gap-2 text-[10px] font-mono text-neutral-500 bg-neutral-950/20 p-2.5 rounded-lg border border-neutral-800/10">
             <AlertCircle className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
-            <span>All uploads are processed through context-aware server proxy pipelines.</span>
+            <span>Files are processed securely through a local server proxy without public exposure.</span>
           </div>
         </div>
       </div>

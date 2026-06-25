@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Radio, Activity, Zap, Sparkles } from 'lucide-react';
+import { Shield, Radio, Activity, Zap, Sparkles, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
@@ -7,11 +7,13 @@ interface HeaderProps {
   setAutopilot: (val: boolean) => void;
   statusText: string;
   isProcessing: boolean;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
-export default function Header({ autopilot, setAutopilot, statusText, isProcessing }: HeaderProps) {
+export default function Header({ autopilot, setAutopilot, statusText, isProcessing, theme, onToggleTheme }: HeaderProps) {
   return (
-    <header className="relative w-full border-b border-neutral-900 bg-neutral-950/80 backdrop-blur-md py-4 px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-40">
+    <header className="relative w-full border-b border-neutral-850 bg-neutral-950/80 backdrop-blur-md py-4 px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-40">
       {/* Brand Logo & Name */}
       <div className="flex items-center gap-3">
         <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-800 shadow-lg shadow-neutral-950 overflow-hidden">
@@ -44,13 +46,13 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
             <span className="flex h-1.5 w-1.5 rounded-full bg-amber-500" />
           </div>
           <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-            Proactive AI Co-Pilot
+            Study Planner & AI Companion
           </p>
         </div>
       </div>
 
       {/* Dynamic Status HUD */}
-      <div className="flex-1 max-w-md w-full sm:w-auto px-4 py-2 rounded-xl bg-neutral-900/40 border border-neutral-900 flex items-center gap-2.5 shadow-inner">
+      <div className="flex-1 max-w-md w-full sm:w-auto px-4 py-2 rounded-xl bg-neutral-900/40 border border-neutral-850 flex items-center gap-2.5 shadow-inner">
         <div className="relative flex h-2 w-2">
           {autopilot && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -62,12 +64,12 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
             {autopilot ? (
               <>
                 <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-                Companion Autopilot Active
+                Auto-Scheduling Mode Enabled
               </>
             ) : (
               <>
                 <Activity className="w-3 h-3 text-neutral-500" />
-                Autopilot Off
+                Manual Scheduling Mode
               </>
             )}
           </p>
@@ -90,6 +92,22 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
 
       {/* Control Switch */}
       <div className="flex items-center gap-3">
+        {/* Theme Toggle Button */}
+        <button
+          onClick={onToggleTheme}
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-amber-500 hover:border-neutral-700 transition-all duration-150 cursor-pointer shadow-sm"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          id="theme-toggle-button"
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-500 transition-transform hover:rotate-45" />
+          ) : (
+            <Moon className="w-4 h-4 text-indigo-500 transition-transform hover:-rotate-12" />
+          )}
+        </button>
+
         <div className="flex items-center gap-2.5 bg-neutral-900 px-3.5 py-1.5 rounded-xl border border-neutral-800/80">
           <span className="font-sans text-xs text-neutral-400">Autopilot</span>
           <button

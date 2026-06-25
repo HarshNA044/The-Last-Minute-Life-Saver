@@ -17,7 +17,7 @@ export default function AgentLogsHUD({ logs, onClearLogs, statusText }: AgentLog
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4 text-emerald-400" />
           <h3 className="font-mono text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">
-            Autopilot Tracking & Cognitive Actions
+            Activity & System Logs
           </h3>
         </div>
         <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ export default function AgentLogsHUD({ logs, onClearLogs, statusText }: AgentLog
         {logs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-center">
             <p className="font-mono text-[10px] text-neutral-600">
-              System quiescent. Awaiting input text, file extraction, or calendar optimization commands.
+              No recent activity. Import a syllabus or click "Optimize Now" to populate.
             </p>
           </div>
         ) : (

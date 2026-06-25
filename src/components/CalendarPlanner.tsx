@@ -38,31 +38,31 @@ export default function CalendarPlanner({
   const neededMinutes = incompleteSubtasks.reduce((sum, st) => sum + st.estimatedMinutes, 0);
   
   let riskStatus: { label: string; color: string; desc: string; progress: number } = {
-    label: "Safe Mode",
+    label: "Fully Scheduled",
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    desc: "All extracted subtasks have dedicated focus slots booked on your agenda.",
+    desc: "All of your study subtasks have scheduled focus slots on your calendar.",
     progress: 10
   };
 
   if (neededMinutes > 0 && scheduledFocusMinutes === 0) {
     riskStatus = {
-      label: "Critical Danger (Unschedules)",
+      label: "Action Required",
       color: "text-rose-400 bg-rose-500/10 border-rose-500/20 animate-pulse",
-      desc: "Warning: Multiple tasks found in syllabus but absolutely 0 focus times arranged!",
+      desc: "Warning: You have assignments listed, but haven't scheduled any study blocks yet!",
       progress: 95
     };
   } else if (neededMinutes > scheduledFocusMinutes) {
     riskStatus = {
-      label: "Medium Stress Warning",
+      label: "More Study Time Needed",
       color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-      desc: `Extracted work is ${Math.round(neededMinutes / 60)}h, but only ${Math.round(scheduledFocusMinutes / 60)}h slotted. Run optimizer!`,
+      desc: `You have about ${Math.round(neededMinutes / 60)}h of work, but only ${Math.round(scheduledFocusMinutes / 60)}h scheduled. Click "Optimize Now" below to fill the gaps!`,
       progress: 60
     };
   } else if (neededMinutes > 0) {
     riskStatus = {
-      label: "Optimized Lock-in",
+      label: "Schedule Fully Optimized",
       color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-      desc: "Sufficient study sessions structured. Track your streaks active!",
+      desc: "You have plenty of study sessions scheduled to cover all your assignments!",
       progress: 25
     };
   }
@@ -85,7 +85,7 @@ export default function CalendarPlanner({
           <div className="flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-rose-500" />
             <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Procrastination & Stress Matrix
+              Study Preparation Status
             </h3>
           </div>
           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${riskStatus.color}`}>
@@ -123,7 +123,7 @@ export default function CalendarPlanner({
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-emerald-400" />
           <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
-            Agenda Calendar Slots (Tuesday, June 23)
+            Your Daily Study Schedule
           </h3>
         </div>
         <div className="flex gap-2">

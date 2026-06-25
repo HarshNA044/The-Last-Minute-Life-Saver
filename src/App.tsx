@@ -6,6 +6,8 @@ import CalendarPlanner from './components/CalendarPlanner';
 import ChatAssistant from './components/ChatAssistant';
 import ActiveTimer from './components/ActiveTimer';
 import AgentLogsHUD from './components/AgentLogsHUD';
+import QuickTips from './components/QuickTips';
+import Analytics from './components/Analytics';
 import { Task, CalendarBlock, AgentLog, SubTask } from './types';
 import { ShieldCheck, HelpCircle, Activity, Sparkles, AlertOctagon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -110,6 +112,16 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [activeSubtask, setActiveSubtask] = useState<{ taskId: string; sub: SubTask } | null>(null);
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('life_saver_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    // Fallback to system preference
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
   // Sync to local storage
   useEffect(() => {
     localStorage.setItem('life_saver_autopilot', JSON.stringify(autopilot));
@@ -126,6 +138,30 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('life_saver_logs', JSON.stringify(logs));
   }, [logs]);
+
+  // Synchronize CSS class with current theme state
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('life_saver_theme', theme);
+  }, [theme]);
+
+  // Auto-adapt to system default changes dynamically if no custom choice is set
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('life_saver_theme');
+      if (!saved) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  }, []);
 
   // Helper to add system log entries
   const addSystemLog = useCallback((text: string, type: 'info' | 'optimizing' | 'tracking' | 'scheduled' | 'warning' | 'alert') => {
@@ -357,6 +393,11 @@ export default function App() {
     setStatusText(`Focus session locked in for subtask: "${subtask.title}"!`);
   };
 
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    addSystemLog(`User toggled application visual theme mode.`, 'info');
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-white" id="main-application-frame">
       {/* Dynamic Header */}
@@ -365,6 +406,8 @@ export default function App() {
         setAutopilot={setAutopilot}
         statusText={statusText}
         isProcessing={isProcessing}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Primary Dashboard Body Layout */}
@@ -378,19 +421,26 @@ export default function App() {
           setStatusText={setStatusText}
         />
 
+        {/* Syllabus Calendar & Assignment Board */}
+        <DeadlinesList
+          tasks={tasks}
+          onToggleSubtask={handleToggleSubtask}
+          onAddTask={handleAddTask}
+          onDeleteTask={handleDeleteTask}
+          onStartFocus={handleStartFocus}
+        />
+
+        {/* Live Course Progression Analytics */}
+        <Analytics
+          tasks={tasks}
+          onAddSystemLog={addSystemLog}
+        />
+
         {/* Row 2: Grid distribution split */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Column A (Left): Task Board with Sub-tasks checklists */}
+          {/* Column A (Left): Task Board with Sub-tasks checklists & Cognitive Logs HUD */}
           <div className="lg:col-span-7 space-y-6">
-            <DeadlinesList
-              tasks={tasks}
-              onToggleSubtask={handleToggleSubtask}
-              onAddTask={handleAddTask}
-              onDeleteTask={handleDeleteTask}
-              onStartFocus={handleStartFocus}
-            />
-
             {/* Cognitive Logs HUD */}
             <AgentLogsHUD
               logs={logs}
@@ -401,6 +451,9 @@ export default function App() {
 
           {/* Column B (Right): Interactive Timetable calendar + chat / timer panels */}
           <div className="lg:col-span-5 space-y-6">
+            
+            {/* Quick Tips and Suggestions Tooltip System */}
+            <QuickTips tasks={tasks} onAddSystemLog={addSystemLog} />
             
             {/* Split row for widgets depending on active binding */}
             <div className="grid grid-cols-1 gap-6">
@@ -438,7 +491,7 @@ export default function App() {
       </main>
 
       {/* Ambient status indicator footer */}
-      <footer className="py-6 px-6 border-t border-neutral-900 bg-neutral-950 mt-12 text-center text-xs text-neutral-600 font-mono flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="py-6 px-6 border-t border-neutral-850 bg-neutral-950 mt-12 text-center text-xs text-neutral-600 font-mono flex flex-col sm:flex-row items-center justify-between gap-4">
         <p>© 2026 The Last-Minute Life Saver. Autonomous Agenda Optimization.</p>
         <div className="flex gap-4">
           <span>Client Storage: DURABLE</span>

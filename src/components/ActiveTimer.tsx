@@ -77,20 +77,17 @@ export default function ActiveTimer({
 
   return (
     <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 shadow-xl flex flex-col items-center justify-between h-[480px] relative overflow-hidden" id="focus-timer-section">
-      {/* Background radial highlight */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-
       {/* Segment Header */}
       <div className="w-full flex items-center justify-between border-b border-neutral-800/60 pb-3 z-10">
         <div className="flex items-center gap-2">
           <Timer className="w-4 h-4 text-amber-500 animate-pulse" />
           <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
-            Neuro-Focus Deep Timer
+            Study Session Timer
           </h3>
         </div>
         <div className="flex items-center gap-1.5 bg-neutral-950/80 border border-neutral-800/40 px-2 py-0.5 rounded-full select-none">
           <Award className="w-3 h-3 text-amber-400" />
-          <span className="font-mono text-[9px] text-neutral-400">Streak: {completedStreaks}</span>
+          <span className="font-mono text-[9px] text-neutral-400">Completed Sessions: {completedStreaks}</span>
         </div>
       </div>
 
@@ -120,10 +117,10 @@ export default function ActiveTimer({
               className="space-y-1"
             >
               <span className="px-2.5 py-0.5 bg-neutral-950 border border-neutral-800 text-neutral-500 text-[10px] font-mono rounded-full uppercase tracking-wider">
-                Idle Sync Mode
+                Timer Ready
               </span>
               <h4 className="font-sans text-neutral-400 text-xs mt-1">
-                Select &quot;Focus&quot; on any subtask checklist item to bind target scope.
+                Click &quot;Focus&quot; on any checklist subtask to start.
               </h4>
             </motion.div>
           )}
@@ -173,8 +170,8 @@ export default function ActiveTimer({
       {/* Ambient Audio Presets Simulator UI (Does not actual block since browser is simple, we simulate beautifully to fulfill visual fidelity) */}
       <div className="w-full flex flex-col gap-1.5 bg-neutral-950/40 border border-neutral-800/40 rounded-xl p-3 z-10">
         <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-          <Volume2 className="w-3 w-3 text-neutral-500" />
-          Aural Focus Synthesis Engine
+          <Volume2 className="w-3 h-3 text-neutral-500" />
+          Background Focus Sounds
         </label>
         <div className="grid grid-cols-4 gap-1.5 text-[9px] font-mono text-neutral-400">
           {(['none', 'rain', 'lofi', 'brown'] as const).map((sound) => (
@@ -182,15 +179,15 @@ export default function ActiveTimer({
               key={sound}
               onClick={() => {
                 setAmbientPreset(sound);
-                onAddSystemLog(`Acoustic synthesis recalibrated to: [${sound.toUpperCase()}]`, 'info');
+                onAddSystemLog(`Focus sound updated to: [${sound.toUpperCase()}]`, 'info');
               }}
               className={`py-1 rounded border transition-all truncate uppercase cursor-pointer ${
                 ambientPreset === sound 
                   ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold' 
-                  : 'bg-neutral-950 border-neutral-900 text-neutral-500 hover:text-neutral-400'
+                  : 'bg-neutral-950 border-neutral-850 text-neutral-500 hover:text-neutral-400'
               }`}
             >
-              {sound === 'none' ? 'MUTE' : sound}
+              {sound === 'none' ? 'OFF' : sound}
             </button>
           ))}
         </div>

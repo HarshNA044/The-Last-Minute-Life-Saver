@@ -1,1 +1,59 @@
 @import "tailwindcss";
+
+@theme {
+  --color-neutral-950: var(--bg-950);
+  --color-neutral-900: var(--bg-900);
+  --color-neutral-955: var(--bg-955);
+  
+  --color-neutral-850: var(--border-850);
+  --color-neutral-800: var(--border-800);
+  --color-neutral-700: var(--border-700);
+  
+  --color-neutral-600: var(--text-600);
+  --color-neutral-500: var(--text-500);
+  --color-neutral-400: var(--text-400);
+  --color-neutral-300: var(--text-300);
+  --color-neutral-200: var(--text-200);
+  --color-neutral-100: var(--text-100);
+}
+
+:root {
+  /* Default: Light Mode Theme */
+  --bg-950: #f8fafc; /* Page Background (slate-50) */
+  --bg-900: #ffffff; /* Card/Panel Background (white) */
+  --bg-955: #f1f5f9; /* Active/Hover state (slate-100) */
+  
+  --border-850: #e2e8f0; /* Subtle borders (slate-200) */
+  --border-800: #cbd5e1; /* Main borders (slate-300) */
+  --border-700: #94a3b8; /* Muted accents (slate-400) */
+  
+  --text-600: #64748b; /* Very muted text (slate-500) */
+  --text-500: #475569; /* Muted text (slate-600) */
+  --text-400: #334155; /* Secondary text (slate-700) */
+  --text-300: #1e293b; /* Body text (slate-800) */
+  --text-200: #0f172a; /* Subheadings (slate-900) */
+  --text-100: #020617; /* Main headings (slate-950) */
+}
+
+/* Dark Mode Theme overrides */
+.dark {
+  --bg-950: #0a0a0a; /* Page Background (neutral-950) */
+  --bg-900: #171717; /* Card/Panel Background (neutral-900) */
+  --bg-955: #202020; /* Active/Hover state (neutral-900ish) */
+  
+  --border-850: #202020; /* Subtle borders */
+  --border-800: #262626; /* Main borders */
+  --border-700: #404040; /* Muted accents */
+  
+  --text-600: #525252; /* Very muted text */
+  --text-500: #737373; /* Muted text */
+  --text-400: #a3a3a3; /* Secondary text */
+  --text-300: #d4d4d4; /* Body text */
+  --text-200: #e5e5e5; /* Subheadings */
+  --text-100: #f5f5f5; /* Main headings */
+}
+
+/* Smooth transition for theme changes on key layout containers only to optimize performance */
+html, body, #main-application-frame, header, footer, article, section, input, textarea, select, button {
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
