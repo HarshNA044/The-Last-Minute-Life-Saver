@@ -17,13 +17,33 @@ import AuthGateway from './components/AuthGateway';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, firebaseError } from './firebase';
 
+// Dynamic helper functions for actual calendar dates alignment
+const getTodayDateOffset = (offsetDays: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getTodayDateTimeStr = (hour: number, minute: number = 0) => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  const hStr = hour.toString().padStart(2, '0');
+  const mStr = minute.toString().padStart(2, '0');
+  return `${y}-${m}-${day}T${hStr}:${mStr}:00`;
+};
+
 // Default tasks to ensure the dashboard looks complete and premium on load
 const INITIAL_TASKS: Task[] = [
   {
     id: "task-1",
     title: "Syllabus Project Option: OS Kernel Threading",
     description: "Write concurrent lock strategies & process priority queues for the operating systems lab.",
-    originalDeadline: "2026-06-28",
+    originalDeadline: getTodayDateOffset(2),
     priority: "critical",
     estimatedHours: 5,
     category: "Computer Science",
@@ -38,7 +58,7 @@ const INITIAL_TASKS: Task[] = [
     id: "task-2",
     title: "Math 101 Midterm Prep",
     description: "Final study sessions covering multidimensional gradients & space integrals.",
-    originalDeadline: "2026-06-25",
+    originalDeadline: getTodayDateOffset(0),
     priority: "high",
     estimatedHours: 3.5,
     category: "Mathematics",
@@ -56,16 +76,16 @@ const INITIAL_BLOCKS: CalendarBlock[] = [
   {
     id: "block-1",
     title: "System Integration Lectures (CS 350)",
-    start: "2026-06-23T10:00:00",
-    end: "2026-06-23T11:30:00",
+    start: getTodayDateTimeStr(10),
+    end: getTodayDateTimeStr(11, 30),
     type: "class",
     completed: false
   },
   {
     id: "block-2",
     title: "Post-Lecture Decompression Phase",
-    start: "2026-06-23T12:00:00",
-    end: "2026-06-23T13:00:00",
+    start: getTodayDateTimeStr(12),
+    end: getTodayDateTimeStr(13),
     type: "break",
     completed: true
   }
@@ -161,6 +181,14 @@ export default function App() {
   const initialLoadCompleted = useRef<boolean>(false);
 
   const [autopilot, setAutopilot] = useState<boolean>(true);
+
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
 
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('life_saver_tasks');
@@ -278,7 +306,6 @@ export default function App() {
         addSystemLog("Initialized your safe space on the secure cloud.", "info");
       }
     } catch (err: any) {
-      console.error("Error reading/writing user doc:", err);
       const isOfflineError = 
         err.message?.includes('offline') || 
         err.message?.includes('network') || 
@@ -286,8 +313,10 @@ export default function App() {
         err.message?.includes('network connection');
       
       if (isOfflineError) {
+        console.warn("Running in offline mode: loaded workspace from local backup.", err);
         addSystemLog("Running in offline mode: loaded workspace from local backup.", "info");
       } else {
+        console.error("Error reading/writing user doc:", err);
         addSystemLog(`Failed to sync cloud database: ${err.message || err}`, "warning");
         if (err.message?.includes('permission') || err.message?.includes('Permission')) {
           handleFirestoreError(err, OperationType.GET, `users/${userEmail}`);
@@ -327,9 +356,19 @@ export default function App() {
             updatedAt: new Date().toISOString()
           }, { merge: true });
         } catch (err: any) {
-          console.error("Failed to save state to Firestore:", err);
-          if (err.message?.includes('permission') || err.message?.includes('Permission')) {
-            handleFirestoreError(err, OperationType.WRITE, `users/${user.email.trim().toLowerCase()}`);
+          const isOfflineError = 
+            err.message?.includes('offline') || 
+            err.message?.includes('network') || 
+            err.code === 'unavailable' || 
+            err.message?.includes('network connection');
+          
+          if (isOfflineError) {
+            console.warn("Failed to save state to Firestore (offline):", err);
+          } else {
+            console.error("Failed to save state to Firestore:", err);
+            if (err.message?.includes('permission') || err.message?.includes('Permission')) {
+              handleFirestoreError(err, OperationType.WRITE, `users/${user.email.trim().toLowerCase()}`);
+            }
           }
         }
       };
@@ -527,8 +566,8 @@ export default function App() {
       // Find subsequent available starting hour that has no overlapping class/personal reserved block
       let occupied = true;
       while (occupied && currentHourCursor < 22) {
-        const testStart = `2026-06-23T${currentHourCursor.toString().padStart(2, '0')}:00:00`;
-        const testEnd = `2026-06-23T${(currentHourCursor + 1).toString().padStart(2, '0')}:00:00`;
+        const testStart = `${selectedDateStr}T${currentHourCursor.toString().padStart(2, '0')}:00:00`;
+        const testEnd = `${selectedDateStr}T${(currentHourCursor + 1).toString().padStart(2, '0')}:00:00`;
 
         const hasOverlap = solidReservedBlocks.some((b) => {
           const bStart = new Date(b.start).getTime();
@@ -547,8 +586,8 @@ export default function App() {
 
       if (currentHourCursor < 22) {
         // Place the Focus slot!
-        const blockStart = `2026-06-23T${currentHourCursor.toString().padStart(2, '0')}:00:00`;
-        const blockEnd = `2026-06-23T${(currentHourCursor + 1).toString().padStart(2, '0')}:00:00`;
+        const blockStart = `${selectedDateStr}T${currentHourCursor.toString().padStart(2, '0')}:00:00`;
+        const blockEnd = `${selectedDateStr}T${(currentHourCursor + 1).toString().padStart(2, '0')}:00:00`;
 
         proposedFocusBlocks.push({
           id: `focus-slot-${Math.random()}-${item.sub.id}`,
@@ -571,7 +610,7 @@ export default function App() {
     setIsProcessing(false);
     setStatusText(`Successfully optimized calendar! Slotted ${scheduledCount} critical focus sessions.`);
     addSystemLog(`Autopilot optimized: arranged ${scheduledCount} focus intervals.`, 'scheduled');
-  }, [blocks, addSystemLog]);
+  }, [blocks, addSystemLog, selectedDateStr]);
 
   // Toggle checklist subtask complete
   const handleToggleSubtask = (taskId: string, subtaskId: string) => {
@@ -664,8 +703,8 @@ export default function App() {
     const newBlock: CalendarBlock = {
       id: `manual-block-${Math.random()}`,
       title,
-      start: `2026-06-23T${sH.toString().padStart(2, '0')}:00:00`,
-      end: `2026-06-23T${eH.toString().padStart(2, '0')}:00:00`,
+      start: `${selectedDateStr}T${sH.toString().padStart(2, '0')}:00:00`,
+      end: `${selectedDateStr}T${eH.toString().padStart(2, '0')}:00:00`,
       type,
       completed: false
     };
@@ -759,6 +798,8 @@ export default function App() {
           onAddTask={handleAddTask}
           onDeleteTask={handleDeleteTask}
           onStartFocus={handleStartFocus}
+          selectedDateStr={selectedDateStr}
+          onSelectDate={setSelectedDateStr}
         />
 
         {/* Live Course Progression Analytics */}
@@ -816,6 +857,7 @@ export default function App() {
               onClearBlocks={handleClearBlocks}
               onAutoSchedule={() => autoScheduleBlocks()}
               onAddManualBlock={handleAddManualBlock}
+              selectedDateStr={selectedDateStr}
             />
           </div>
         </div>

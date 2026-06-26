@@ -33,6 +33,8 @@ interface DeadlinesListProps {
   onAddTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onStartFocus: (taskId: string, subtask?: SubTask) => void;
+  selectedDateStr: string;
+  onSelectDate: (dateStr: string) => void;
 }
 
 export default function DeadlinesList({
@@ -40,14 +42,28 @@ export default function DeadlinesList({
   onToggleSubtask,
   onAddTask,
   onDeleteTask,
-  onStartFocus
+  onStartFocus,
+  selectedDateStr,
+  onSelectDate
 }: DeadlinesListProps) {
   // Navigation & View Mode states
   const [viewMode, setViewMode] = useState<'daywise' | 'monthwise'>('daywise');
-  const [selectedDateStr, setSelectedDateStr] = useState<string>('2026-06-25'); // Default anchored to the system context date
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(5); // June is 5 (0-indexed)
+  const setSelectedDateStr = onSelectDate;
   
+  const today = new Date();
+  const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(today.getMonth()); // Dynamic system month (0-indexed)
+  
+  // Dynamic helper for today's default date representation
+  const getTodayOffsetStr = (offset: number = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   // Checklist UI States
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [showAddForm, setShowAddForm] = useState(false);
@@ -63,7 +79,7 @@ export default function DeadlinesList({
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [hours, setHours] = useState(3);
-  const [deadline, setDeadline] = useState("2026-06-25");
+  const [deadline, setDeadline] = useState(getTodayOffsetStr(0));
   const [category, setCategory] = useState("Work");
   const [rawSubtasks, setRawSubtasks] = useState("Draft first outline\nComplete implementation tests");
 
@@ -73,6 +89,8 @@ export default function DeadlinesList({
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN'); // Default to Indian English/Hinglish, support Hindi
+  const [autoSubmitVoice, setAutoSubmitVoice] = useState(false); // Instantly schedule task on speak
+  const recognitionRef = React.useRef<any>(null);
 
   const processVoiceTask = async (text: string) => {
     if (!text.trim()) return;
@@ -82,22 +100,68 @@ export default function DeadlinesList({
       const response = await fetch("/api/gemini/voice-task", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text })
+        body: JSON.stringify({ 
+          transcript: text,
+          clientDate: new Date().toISOString().split('T')[0]
+        })
       });
       const data = await response.json();
       if (data.success && data.task) {
-        setTitle(data.task.title || "");
-        setDescription(data.task.description || "");
-        setCategory(data.task.category || "Work");
-        setPriority(data.task.priority || "medium");
-        setHours(Number(data.task.estimatedHours) || 2);
-        setDeadline(data.task.deadline || "2026-06-25");
+        const tTitle = data.task.title || "Voice Task";
+        const tDesc = data.task.description || "Created from voice transcript.";
+        const tCategory = data.task.category || "Work";
+        const tPriority = data.task.priority || "medium";
+        const tHours = Number(data.task.estimatedHours) || 2;
+        const tDeadline = data.task.deadline || "2026-06-25";
         
+        let subtaskLines: string[] = [];
         if (data.task.subtasks && Array.isArray(data.task.subtasks)) {
-          const rawSubText = data.task.subtasks
-            .map((s: any) => s.title)
-            .join("\n");
-          setRawSubtasks(rawSubText);
+          subtaskLines = data.task.subtasks.map((s: any) => s.title);
+        } else {
+          subtaskLines = ["Draft first outline", "Complete implementation tests"];
+        }
+
+        if (autoSubmitVoice) {
+          const subs: SubTask[] = subtaskLines.map((line) => ({
+            id: `manual-sub-${Math.random()}`,
+            title: line,
+            estimatedMinutes: Math.round((tHours * 60) / Math.max(subtaskLines.length, 1)),
+            completed: false
+          }));
+
+          const newTask: Task = {
+            id: `manual-task-${Date.now()}`,
+            title: tTitle,
+            description: tDesc,
+            originalDeadline: tDeadline,
+            priority: tPriority as any,
+            estimatedHours: tHours,
+            status: "backlog",
+            category: tCategory,
+            subtasks: subs
+          };
+
+          onAddTask(newTask);
+          setSelectedDateStr(tDeadline);
+          
+          const parsedDate = new Date(tDeadline + 'T00:00:00');
+          if (!isNaN(parsedDate.getTime())) {
+            setCurrentYear(parsedDate.getFullYear());
+            setCurrentMonth(parsedDate.getMonth());
+          }
+
+          setVoiceTranscript(`✅ Scheduled: "${tTitle}" on ${tDeadline}!`);
+          setTitle("");
+          setDescription("");
+          setRawSubtasks("");
+        } else {
+          setTitle(tTitle);
+          setDescription(tDesc);
+          setCategory(tCategory);
+          setPriority(tPriority || "medium");
+          setHours(tHours);
+          setDeadline(tDeadline);
+          setRawSubtasks(subtaskLines.join("\n"));
         }
       } else {
         setVoiceError("Failed to parse your voice. Please try again with clear words.");
@@ -108,6 +172,21 @@ export default function DeadlinesList({
     } finally {
       setIsProcessingVoice(false);
     }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.warn("Error stopping speech recognition:", e);
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+    startListening();
   };
 
   const startListening = () => {
@@ -122,6 +201,7 @@ export default function DeadlinesList({
 
     try {
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = voiceLanguage; 
@@ -180,16 +260,16 @@ export default function DeadlinesList({
 
   // Normalized date parser helper
   const getNormalizedDate = (dateStr: string): string => {
-    if (!dateStr) return '2026-06-25';
+    if (!dateStr) return getTodayOffsetStr(0);
     const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       return `${match[1]}-${match[2]}-${match[3]}`;
     }
     
     const lower = dateStr.toLowerCase();
-    if (lower.includes('today')) return '2026-06-25';
-    if (lower.includes('tomorrow')) return '2026-06-26';
-    if (lower.includes('yesterday')) return '2026-06-24';
+    if (lower.includes('today')) return getTodayOffsetStr(0);
+    if (lower.includes('tomorrow')) return getTodayOffsetStr(1);
+    if (lower.includes('yesterday')) return getTodayOffsetStr(-1);
     
     // Parse timestamp
     const parsed = Date.parse(dateStr);
@@ -201,7 +281,7 @@ export default function DeadlinesList({
       return `${y}-${m}-${day}`;
     }
     
-    return '2026-06-25';
+    return getTodayOffsetStr(0);
   };
 
   // Extract unique categories from tasks for filter dropdown
@@ -491,8 +571,8 @@ export default function DeadlinesList({
               <div className="flex items-start gap-3 w-full">
                 <button
                   type="button"
-                  onClick={startListening}
-                  disabled={isListening || isProcessingVoice}
+                  onClick={toggleListening}
+                  disabled={isProcessingVoice}
                   className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center transition-all duration-300 shadow-md ${
                     isListening 
                       ? "bg-rose-500 text-white animate-pulse shadow-rose-500/30 scale-105" 
@@ -500,7 +580,7 @@ export default function DeadlinesList({
                         ? "bg-amber-500 text-neutral-950" 
                         : "bg-neutral-950 border border-neutral-800 text-amber-500 hover:text-amber-400 hover:border-amber-500/30"
                   }`}
-                  title="Speak to add task"
+                  title={isListening ? "Stop listening and parse" : "Speak to add task"}
                 >
                   {isProcessingVoice ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -515,12 +595,12 @@ export default function DeadlinesList({
                     🎙️ Voice Auto-Fill Assistant
                     {isListening && (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-500/10 text-rose-400 text-[9px] rounded font-mono animate-pulse">
-                        Listening...
+                        Listening... Click mic to Stop & AI Parse
                       </span>
                     )}
                     {isProcessingVoice && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] rounded font-mono">
-                        AI Formatting...
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] rounded font-mono animate-pulse">
+                        AI Translating & Formatting...
                       </span>
                     )}
                   </h4>
@@ -528,7 +608,9 @@ export default function DeadlinesList({
                     {voiceTranscript ? (
                       <span className="text-amber-400 italic font-medium">"{voiceTranscript}"</span>
                     ) : (
-                      "Speak in English, Hindi, or Hinglish to automatically fill this form. e.g. \"yaar monday ko project deliverable submit karna hai, research aur draft subtasks include kar do\""
+                      <span>
+                        Speak in Hindi, Hinglish, or English. e.g. <span className="text-amber-500/90 font-mono">"kal exam hai physics ka, revision karna hai subah 9 baje"</span> or <span className="text-amber-500/90 font-mono">"submit assignment next Friday, include design subtasks"</span>
+                      </span>
                     )}
                   </p>
                   {voiceError && (
@@ -539,30 +621,45 @@ export default function DeadlinesList({
                 </div>
               </div>
               
-              {/* Language Selection Toggle */}
-              <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-850 shrink-0 self-end md:self-center">
-                <button
-                  type="button"
-                  onClick={() => setVoiceLanguage('en-IN')}
-                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
-                    voiceLanguage === 'en-IN' 
-                      ? "bg-neutral-800 text-amber-400 font-medium" 
-                      : "text-neutral-500 hover:text-neutral-300"
-                  }`}
-                >
-                  🇮🇳 Hinglish / Eng
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVoiceLanguage('hi-IN')}
-                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
-                    voiceLanguage === 'hi-IN' 
-                      ? "bg-neutral-800 text-amber-400 font-medium" 
-                      : "text-neutral-500 hover:text-neutral-300"
-                  }`}
-                >
-                  🇮🇳 Hindi
-                </button>
+              {/* Voice controls (Language selection & Auto-Submit options) */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0 self-end md:self-center">
+                <div className="flex items-center gap-2 bg-neutral-950/60 px-2 py-1.5 rounded-lg border border-neutral-850">
+                  <input
+                    type="checkbox"
+                    id="auto-submit-voice"
+                    checked={autoSubmitVoice}
+                    onChange={(e) => setAutoSubmitVoice(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer"
+                  />
+                  <label htmlFor="auto-submit-voice" className="text-[10px] font-mono text-neutral-400 cursor-pointer select-none">
+                    🚀 Auto-Schedule
+                  </label>
+                </div>
+
+                <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-850">
+                  <button
+                    type="button"
+                    onClick={() => setVoiceLanguage('en-IN')}
+                    className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
+                      voiceLanguage === 'en-IN' 
+                        ? "bg-neutral-800 text-amber-400 font-medium" 
+                        : "text-neutral-500 hover:text-neutral-300"
+                    }`}
+                  >
+                    🇮🇳 Hinglish / Eng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceLanguage('hi-IN')}
+                    className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
+                      voiceLanguage === 'hi-IN' 
+                        ? "bg-neutral-800 text-amber-400 font-medium" 
+                        : "text-neutral-500 hover:text-neutral-300"
+                    }`}
+                  >
+                    🇮🇳 Hindi
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -947,9 +1044,10 @@ export default function DeadlinesList({
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentYear(2026);
-                      setCurrentMonth(5);
-                      setSelectedDateStr('2026-06-25');
+                      const now = new Date();
+                      setCurrentYear(now.getFullYear());
+                      setCurrentMonth(now.getMonth());
+                      setSelectedDateStr(getTodayOffsetStr(0));
                     }}
                     className="px-2 py-0.5 text-[9px] font-mono bg-neutral-900 border border-neutral-850 text-neutral-500 hover:text-neutral-300 rounded cursor-pointer"
                   >

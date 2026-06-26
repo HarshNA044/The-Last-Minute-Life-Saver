@@ -133,29 +133,165 @@ app.post("/api/auth/send-otp", async (req, res) => {
   }
 });
 
+// Helper function to mock parse syllabus or text prompts with relative date matching
+const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
+  const lower = (textContent || "").toLowerCase();
+  
+  // Parse clientDate or default to today's date
+  const refDateStr = clientDate || new Date().toISOString().split('T')[0];
+  const parts = refDateStr.split('-');
+  const today = parts.length === 3 
+    ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0) 
+    : new Date();
+
+  const getOffsetDateStr = (offsetDays: number) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  let tasks = [];
+
+  // Subject and Category detection
+  let subject = "Academics";
+  let category = "Academics";
+  if (lower.includes("physics") || lower.includes("bhautik")) {
+    subject = "Physics Lab";
+    category = "Academics";
+  } else if (lower.includes("math") || lower.includes("calculus") || lower.includes("ganit")) {
+    subject = "Mathematics Quiz";
+    category = "Academics";
+  } else if (lower.includes("computer") || lower.includes("cs") || lower.includes("coding") || lower.includes("lab") || lower.includes("os")) {
+    subject = "Computer Science Assignment";
+    category = "Project";
+  } else if (lower.includes("marketing") || lower.includes("campaign") || lower.includes("launch")) {
+    subject = "Marketing Campaign";
+    category = "Launch";
+  } else if (lower.includes("history") || lower.includes("itihas")) {
+    subject = "History Research Paper";
+    category = "Project";
+  }
+
+  // Look for relative keywords "yesterday" (or "kal" in a past context), "tomorrow" (or "kal"), and "today" (or "aaj")
+  const hasYesterday = lower.includes("yesterday") || (lower.includes("kal") && (lower.includes("tha") || lower.includes("beeta") || lower.includes("was")));
+  const hasTomorrow = lower.includes("tomorrow") || lower.includes("tommorow") || lower.includes("kal") || lower.includes("parso") || lower.includes("parson");
+  const hasToday = lower.includes("today") || lower.includes("aaj") || (!hasYesterday && !hasTomorrow); // default to today if unspecified
+
+  if (hasYesterday) {
+    tasks.push({
+      title: `${subject} Revision`,
+      description: `Auto-translated assignment due yesterday: "${textContent}"`,
+      originalDeadline: getOffsetDateStr(-1),
+      priority: "high",
+      estimatedHours: 3.5,
+      category: category,
+      subtasks: [
+        { title: "Review past requirements and syllabus milestones", estimatedMinutes: 45 },
+        { title: "Draft high-priority sections to clear backlog", estimatedMinutes: 120 },
+        { title: "Final check and submit on student portal", estimatedMinutes: 45 }
+      ]
+    });
+  }
+  
+  if (hasToday) {
+    tasks.push({
+      title: `${subject} Urgency`,
+      description: `Auto-translated assignment due today: "${textContent}"`,
+      originalDeadline: getOffsetDateStr(0),
+      priority: "critical",
+      estimatedHours: 4,
+      category: category,
+      subtasks: [
+        { title: "Review assignment criteria and layout guidelines", estimatedMinutes: 60 },
+        { title: "Execute priority modules and content development", estimatedMinutes: 150 },
+        { title: "Perform final verification checks & submit", estimatedMinutes: 30 }
+      ]
+    });
+  }
+
+  if (hasTomorrow) {
+    tasks.push({
+      title: `${subject} Prep`,
+      description: `Auto-translated assignment due tomorrow: "${textContent}"`,
+      originalDeadline: getOffsetDateStr(1),
+      priority: "high",
+      estimatedHours: 4.5,
+      category: category,
+      subtasks: [
+        { title: "Deconstruct assignment rules & requirements", estimatedMinutes: 45 },
+        { title: "Develop core implementation and draft sections", estimatedMinutes: 180 },
+        { title: "Refine language or code and execute submission", estimatedMinutes: 45 }
+      ]
+    });
+  }
+
+  // Fallback if no specific dynamic relative dates detected (or to ensure variety)
+  if (tasks.length === 0) {
+    tasks.push({
+      title: "Math 101 Midterm Prep",
+      description: "Covers Chapters 1-4: Limits, derivatives, optimization problems, and curve sketching.",
+      originalDeadline: getOffsetDateStr(2),
+      priority: "critical",
+      estimatedHours: 6,
+      category: "Academics",
+      subtasks: [
+        { title: "Review chapter 1-2 limit calculations", estimatedMinutes: 60 },
+        { title: "Complete practice midterm problems", estimatedMinutes: 120 },
+        { title: "Create sheet of master integration cheat codes", estimatedMinutes: 45 },
+        { title: "Run dynamic 45-minute practice diagnostic test", estimatedMinutes: 45 }
+      ]
+    });
+    tasks.push({
+      title: "Computer Science BST Assignment",
+      description: "Implement core insertion, deletion, and rotation commands in standard Python without external helpers.",
+      originalDeadline: getOffsetDateStr(5),
+      priority: "high",
+      estimatedHours: 8,
+      category: "Project",
+      subtasks: [
+        { title: "Read project specifications and write template classes", estimatedMinutes: 90 },
+        { title: "Code balancing and tree rotation rotations", estimatedMinutes: 180 },
+        { title: "Write custom stress-test framework with 10k insertions", estimatedMinutes: 90 },
+        { title: "Polish clean coding standards and generate visual dump", estimatedMinutes: 60 }
+      ]
+    });
+  }
+
+  return tasks;
+};
+
 // API Route: Extraction of Tasks from files or syllabus texts
 app.post("/api/gemini/analyze", async (req, res) => {
   try {
-    const { textContent, imageBase64, imageMime } = req.body;
+    const { textContent, imageBase64, imageMime, clientDate } = req.body;
     const ai = getGeminiClient();
 
-    const todayDate = "2026-06-23"; // Fixed current local time for evaluation consistency
+    // Dynamically calculate the reference date based on clientDate or current server time
+    const refDateStr = clientDate || new Date().toISOString().split('T')[0];
+    const refDateObj = new Date(refDateStr + 'T12:00:00');
+    const dayName = refDateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
     const extractionPrompt = `
-      You are 'The Last-Minute Life Saver' AI Engine. Your goal is to analyze the provided syllabus text, task description, or schedule image, and extract a list of actionable assignments, projects, or exams.
+      You are 'The Last-Minute Life Saver' AI Engine. Your goal is to analyze the provided syllabus text, task description, schedule image, or user voice transcription, and extract a list of actionable assignments, projects, or exams.
       
-      Current Date Reference: Tuesday, June 23, 2026.
+      Current Date Reference: ${dayName} (ISO format: ${refDateStr}).
       
       Instructions for parsing:
       1. Carefully identify all upcoming items that need active preparation, coding, researching, study, or submission.
-      2. For each identified assignment, determine a realistic completion estimate in hours (e.g. general homework: 2 hours, midterms: 6 hours, papers: 8-10 hours, major projects: 12-15 hours).
-      3. Create 3-5 specific, smaller atomic sub-tasks (milestones) for each task to guide the student from start to finish. Ensure each milestone has an estimated time in minutes (typically 30 to 180 mins).
-      4. Match due dates carefully to the year 2026. If a specific range is mentioned (e.g. "by July 10"), map it strictly. If no due date is found, estimate a logical one (e.g., 5 days from today: June 28, 2026).
-      5. Characterize the priority of each:
-         - 'low': Small, low-stake assignments, daily quizzes.
-         - 'medium': Regular homeworks, lab assignments, essays.
-         - 'high': Term papers, research projects, major presentations.
-         - 'critical': Final exams, final projects, high-coefficient tests.
+      2. The source text or speech may be in English, Hindi, or Hinglish (mixed English and Hindi) in an Indian speaking style (e.g., 'yaar kal exam hai physics ka, revision karna hai subah 9 baje' or 'we need to launch the marketing campaign on next Friday, add subtasks for design, content and emails, should take around 6 hours'). 
+         - Translate any Hindi, Hinglish, or Indian slang parts into clean, professional English.
+         - Convert the resulting tasks, titles, descriptions, and subtasks completely into English.
+      3. Handle relative dates like 'today', 'yesterday', 'tomorrow' or 'kal' (tomorrow/yesterday), 'parso' (day after tomorrow) perfectly by calculating their exact YYYY-MM-DD date mathematically relative to the Current Date Reference: ${refDateStr}.
+         - Today is ${refDateStr}
+         - Tomorrow is 1 day after ${refDateStr}
+         - Yesterday is 1 day before ${refDateStr}
+         - For other days, calculate the correct day index relative to the day of the week of the current reference date ${refDateStr}.
+      4. For each identified assignment, determine a realistic completion estimate in hours (e.g. general homework: 2 hours, midterms: 6 hours, papers: 8-10 hours, major projects: 12-15 hours).
+      5. Create 3-5 specific, smaller atomic sub-tasks (milestones) for each task to guide the student from start to finish. Ensure each milestone has an estimated time in minutes (typically 30 to 180 mins).
+      6. Characterize the priority of each: 'low', 'medium', 'high', 'critical'.
       
       Source Content:
       ${textContent ? `TEXT CONTENT/SYLLABUS DESCRIPTION:\n"""\n${textContent}\n"""\n` : "No direct text provided."}
@@ -164,73 +300,7 @@ app.post("/api/gemini/analyze", async (req, res) => {
     // Handle Mock Fallback if no real API Key
     if (!ai) {
       console.log("No Gemini API key. Injecting premium synthetic extracted tasks for presentation.");
-      // Return highly structured, beautiful mock tasks that perfectly match typical inputs
-      const isSyllabus = textContent && (textContent.toLowerCase().includes("syllabus") || textContent.toLowerCase().includes("cs") || textContent.toLowerCase().includes("math"));
-      
-      let mockTasks = [];
-      if (isSyllabus) {
-        mockTasks = [
-          {
-            title: "Math 101 Midterm Prep",
-            description: "Covers Chapters 1-4: Limits, derivatives, optimization problems, and curve sketching.",
-            originalDeadline: "2026-06-28",
-            priority: "critical",
-            estimatedHours: 6,
-            category: "Mathematics",
-            subtasks: [
-              { title: "Review chapter 1-2 limit calculations", estimatedMinutes: 60, completed: false },
-              { title: "Complete practice midterm problems", estimatedMinutes: 120, completed: false },
-              { title: "Create sheet of master integration cheat codes", estimatedMinutes: 45, completed: false },
-              { title: "Run dynamic 45-minute practice diagnostic test", estimatedMinutes: 45, completed: false }
-            ]
-          },
-          {
-            title: "Computer Science Assignment 2: Binary Search Trees",
-            description: "Implement core insertion, deletion, and rotation commands in standard Python without external helpers.",
-            originalDeadline: "2026-07-02",
-            priority: "high",
-            estimatedHours: 8,
-            category: "Computer Science",
-            subtasks: [
-              { title: "Read project specifications and write template classes", estimatedMinutes: 90, completed: false },
-              { title: "Code balancing and tree rotation rotations", estimatedMinutes: 180, completed: false },
-              { title: "Write custom stress-test framework with 10k insertions", estimatedMinutes: 90, completed: false },
-              { title: "Polish clean coding standards and generate visual dump", estimatedMinutes: 60, completed: false }
-            ]
-          }
-        ];
-      } else {
-        mockTasks = [
-          {
-            title: "Research Essay Outline",
-            description: "Structure proposal and research scope for historical developments of computing technology.",
-            originalDeadline: "2026-06-25",
-            originalDeadlineRaw: "In 2 days",
-            priority: "high",
-            estimatedHours: 4,
-            category: "History",
-            subtasks: [
-              { title: "Gather three high-quality academic sources", estimatedMinutes: 60, completed: false },
-              { title: "Draft thesis statement and visual argument maps", estimatedMinutes: 45, completed: false },
-              { title: "Map 3 main paragraphs and topic sentences", estimatedMinutes: 60, completed: false },
-              { title: "Verify MLA bibliography and citation codes", estimatedMinutes: 30, completed: false }
-            ]
-          },
-          {
-            title: "Interactive Web Form Design",
-            description: "Create accessible signup panels for student events utilizing responsive media components.",
-            originalDeadline: "2026-06-30",
-            priority: "medium",
-            estimatedHours: 3.5,
-            category: "Design",
-            subtasks: [
-              { title: "Sketch responsive viewport structures", estimatedMinutes: 45, completed: false },
-              { title: "Write semantic forms structure in HTML/Tailwind CSS", estimatedMinutes: 90, completed: false },
-              { title: "Test keystroke focus traps and navigation patterns", estimatedMinutes: 45, completed: false }
-            ]
-          }
-        ];
-      }
+      const mockTasks = mockParseSyllabusText(textContent || "", refDateStr);
       return res.json({ success: true, tasks: mockTasks, mode: "mock" });
     }
 
@@ -337,56 +407,8 @@ app.post("/api/gemini/analyze", async (req, res) => {
 
   } catch (err: any) {
     console.log(`[Parser] Note: Gracefully activated local syllabus parser fallback. (Reason: ${err.message || err})`);
-    let mockTasks = [];
-    const lowerPrompt = (req.body.textContent || "").toLowerCase();
-    if (lowerPrompt.includes("syllabus") || lowerPrompt.includes("course") || lowerPrompt.includes("lab") || lowerPrompt.includes("cs")) {
-      mockTasks = [
-        {
-          title: "Syllabus Extracted Assignment: CS balanced binary tree",
-          description: "Implement high-performance AVL Trees and Red-Black tree rotations from syllabus guidelines.",
-          originalDeadline: "2026-06-29",
-          priority: "high",
-          estimatedHours: 6.5,
-          category: "Computer Science",
-          subtasks: [
-            { title: "Read project specifications and write template classes", estimatedMinutes: 90, completed: false },
-            { title: "Code balancing and tree rotation rotations", estimatedMinutes: 180, completed: false },
-            { title: "Write custom stress-test framework with 10k insertions", estimatedMinutes: 90, completed: false },
-            { title: "Polish clean coding standards and generate visual dump", estimatedMinutes: 60, completed: false }
-          ]
-        }
-      ];
-    } else {
-      mockTasks = [
-        {
-          title: "Research Essay Outline",
-          description: "Structure proposal and research scope for historical developments of computing technology.",
-          originalDeadline: "2026-06-25",
-          priority: "high",
-          estimatedHours: 4,
-          category: "History",
-          subtasks: [
-            { title: "Gather three high-quality academic sources", estimatedMinutes: 60, completed: false },
-            { title: "Draft thesis statement and visual argument maps", estimatedMinutes: 45, completed: false },
-            { title: "Map 3 main paragraphs and topic sentences", estimatedMinutes: 60, completed: false },
-            { title: "Verify MLA bibliography and citation codes", estimatedMinutes: 30, completed: false }
-          ]
-        },
-        {
-          title: "Interactive Web Form Design",
-          description: "Create accessible signup panels for student events utilizing responsive media components.",
-          originalDeadline: "2026-06-30",
-          priority: "medium",
-          estimatedHours: 3.5,
-          category: "Design",
-          subtasks: [
-            { title: "Sketch responsive viewport structures", estimatedMinutes: 45, completed: false },
-            { title: "Write semantic forms structure in HTML/Tailwind CSS", estimatedMinutes: 90, completed: false },
-            { title: "Test keystroke focus traps and navigation patterns", estimatedMinutes: 45, completed: false }
-          ]
-        }
-      ];
-    }
+    const refDateStr = req.body.clientDate || new Date().toISOString().split('T')[0];
+    const mockTasks = mockParseSyllabusText(req.body.textContent || "", refDateStr);
     return res.json({ success: true, tasks: mockTasks, mode: "fallback" });
   }
 });
@@ -546,8 +568,8 @@ What is your immediate focus goal?`;
   }
 });
 
-// Helper function to mock parse voice transcripts in Hinglish/English/Hindi
-const mockParseVoiceTask = (transcript: string) => {
+// Helper function to mock parse voice transcripts in Hinglish/English/Hindi with elegant translation to English
+const mockParseVoiceTask = (transcript: string, clientDate?: string) => {
   const lower = transcript.toLowerCase();
   
   // Set defaults
@@ -557,73 +579,164 @@ const mockParseVoiceTask = (transcript: string) => {
   let priority: "low" | "medium" | "high" | "critical" = "medium";
   let estimatedHours = 2;
   
-  // Calculate relative dates (Today reference is June 23, 2026)
-  const today = new Date(2026, 5, 23); // June 23, 2026
+  // Parse relative date from clientDate or default to June 25, 2026
+  const refDateStr = clientDate || "2026-06-25";
+  const parts = refDateStr.split('-');
+  const today = parts.length === 3 
+    ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0) 
+    : new Date(2026, 5, 25, 12, 0, 0);
+
   let deadlineDate = new Date(today);
   deadlineDate.setDate(today.getDate() + 3); // Default 3 days
 
-  if (lower.includes("tomorrow") || lower.includes("kal") || lower.includes("parso") || lower.includes("agli subah")) {
+  // Check for day modifications
+  if (lower.includes("tomorrow") || lower.includes("kal") || lower.includes("agli subah") || lower.includes("agli subha")) {
     deadlineDate = new Date(today);
     deadlineDate.setDate(today.getDate() + 1);
-  } else if (lower.includes("monday") || lower.includes("somvar")) {
+  } else if (lower.includes("parso") || lower.includes("parson") || lower.includes("day after tomorrow")) {
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + 2);
+  } else if (lower.includes("monday") || lower.includes("somvar") || lower.includes("somvaar")) {
     const day = today.getDay();
     const daysToAdd = (8 - day) % 7 || 7;
+    deadlineDate = new Date(today);
     deadlineDate.setDate(today.getDate() + daysToAdd);
-  } else if (lower.includes("friday") || lower.includes("shukravar")) {
+  } else if (lower.includes("tuesday") || lower.includes("mangalvar") || lower.includes("mangalvaar")) {
     const day = today.getDay();
-    const daysToAdd = (5 - day + 7) % 7 || 7;
+    const daysToAdd = (9 - day) % 7 || 7;
+    deadlineDate = new Date(today);
     deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("wednesday") || lower.includes("budhvar") || lower.includes("budhvaar")) {
+    const day = today.getDay();
+    const daysToAdd = (10 - day) % 7 || 7;
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("thursday") || lower.includes("guruvar") || lower.includes("guruvaar") || lower.includes("veervar") || lower.includes("veervaar")) {
+    const day = today.getDay();
+    const daysToAdd = (11 - day) % 7 || 7;
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("friday") || lower.includes("shukravar") || lower.includes("shukravaar")) {
+    const day = today.getDay();
+    const daysToAdd = (12 - day) % 7 || 7;
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("saturday") || lower.includes("shanivar") || lower.includes("shanivaar")) {
+    const day = today.getDay();
+    const daysToAdd = (13 - day) % 7 || 7;
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("sunday") || lower.includes("ravivar") || lower.includes("ravivaar")) {
+    const day = today.getDay();
+    const daysToAdd = (14 - day) % 7 || 7;
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  }
+
+  // Support duration parsing
+  if (lower.includes("1 hour") || lower.includes("1 ghanta") || lower.includes("ek ghanta")) {
+    estimatedHours = 1;
+  } else if (lower.includes("2 hours") || lower.includes("2 ghante") || lower.includes("do ghante")) {
+    estimatedHours = 2;
+  } else if (lower.includes("3 hours") || lower.includes("3 ghante") || lower.includes("teen ghante")) {
+    estimatedHours = 3;
+  } else if (lower.includes("4 hours") || lower.includes("4 ghante") || lower.includes("char ghante")) {
+    estimatedHours = 4;
+  } else if (lower.includes("5 hours") || lower.includes("5 ghante") || lower.includes("paanch ghante")) {
+    estimatedHours = 5;
+  } else if (lower.includes("6 hours") || lower.includes("6 ghante") || lower.includes("chhe ghante")) {
+    estimatedHours = 6;
+  }
+
+  // Detect Subject (English / Hindi / Hinglish translation)
+  let subject = "";
+  if (lower.includes("physics") || lower.includes("bhautik")) {
+    subject = "Physics";
+  } else if (lower.includes("chemistry") || lower.includes("rasayan")) {
+    subject = "Chemistry";
+  } else if (lower.includes("math") || lower.includes("ganit") || lower.includes("hisab")) {
+    subject = "Mathematics";
+  } else if (lower.includes("computer") || lower.includes("coding") || lower.includes("programming")) {
+    subject = "Computer Science";
+  } else if (lower.includes("history") || lower.includes("itihas")) {
+    subject = "History";
+  } else if (lower.includes("biology") || lower.includes("jeev")) {
+    subject = "Biology";
+  } else if (lower.includes("english") || lower.includes("angrezi")) {
+    subject = "English";
+  } else if (lower.includes("marketing") || lower.includes("bazar") || lower.includes("prachari")) {
+    subject = "Marketing";
   }
 
   // Keywords logic
-  if (lower.includes("exam") || lower.includes("pariksha") || lower.includes("test") || lower.includes("quiz") || lower.includes("padhna")) {
-    title = "Exam Preparation Study Block";
+  if (lower.includes("exam") || lower.includes("pariksha") || lower.includes("test") || lower.includes("quiz") || lower.includes("revision") || lower.includes("doohraav") || lower.includes("padhna")) {
+    title = subject ? `${subject} Exam Revision` : "Exam Preparation Study Block";
     category = "Academics";
     priority = "high";
-    estimatedHours = 3;
-  } else if (lower.includes("meeting") || lower.includes("client") || lower.includes("baithak") || lower.includes("call")) {
-    title = "Client Sync & Review Meeting";
+    description = `Auto-translated: Complete deep study and active revision prep${subject ? ` for ${subject}` : ''}.`;
+  } else if (lower.includes("meeting") || lower.includes("client") || lower.includes("baithak") || lower.includes("call") || lower.includes("synch")) {
+    title = subject ? `${subject} Team Sync` : "Client Sync & Review Meeting";
     category = "Work";
     priority = "medium";
-    estimatedHours = 1.5;
+    description = `Auto-translated: Synchronize deliverables, milestones, and align next sprint objectives${subject ? ` for ${subject}` : ''}.`;
   } else if (lower.includes("launch") || lower.includes("campaign") || lower.includes("product") || lower.includes("start")) {
-    title = "Marketing Campaign Launch Preparation";
+    title = subject ? `${subject} Launch Campaign` : "Marketing Campaign Launch Preparation";
     category = "Launch";
     priority = "critical";
-    estimatedHours = 5;
-  } else if (lower.includes("project") || lower.includes("karya") || lower.includes("assignment") || lower.includes("subtasks")) {
-    title = "Project Milestones Deliverables";
+    description = `Auto-translated: Orchestrate production, deployment steps, and monitor real-time launch metrics${subject ? ` for ${subject}` : ''}.`;
+  } else if (lower.includes("project") || lower.includes("karya") || lower.includes("assignment") || lower.includes("report") || lower.includes("submit")) {
+    title = subject ? `${subject} Project Assignment` : "Project Milestones Deliverables";
     category = "Project";
     priority = "high";
-    estimatedHours = 4;
+    description = `Auto-translated: Write, compile, test, and package syllabus submission deliverables${subject ? ` for ${subject}` : ''}.`;
+  } else {
+    title = "Syllabus Milestone Goal";
+    category = "Personal";
+    priority = "medium";
   }
 
-  // Try to clean up name from transcript if possible
-  const matchWith = lower.match(/(?:meeting with|project on|exam for|preparation of|prep for|task for) ([a-zA-Z0-9\s]{3,30})/);
-  if (matchWith && matchWith[1]) {
-    const capitalized = matchWith[1].split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    title = capitalized;
+  // Fallback specific subtasks based on category in English
+  let subtasks = [
+    { title: "Review requirements and draft initial outline", estimatedMinutes: 45 },
+    { title: "Execute core task segments & content draft", estimatedMinutes: 90 },
+    { title: "Final quality checks, reviews and submission", estimatedMinutes: 30 }
+  ];
+
+  if (category === "Academics") {
+    subtasks = [
+      { title: "Organize formulas, class notes, and syllabus materials", estimatedMinutes: 40 },
+      { title: "Solve practice problems and sample question sets", estimatedMinutes: 90 },
+      { title: "Draft high-yield flashcards and test-run weak topics", estimatedMinutes: 50 }
+    ];
+  } else if (category === "Project") {
+    subtasks = [
+      { title: "Draft technical architecture and initial implementation mockup", estimatedMinutes: 60 },
+      { title: "Write code base or core content sections", estimatedMinutes: 120 },
+      { title: "Run extensive tests, fix glitches, and format documentation", estimatedMinutes: 60 }
+    ];
+  } else if (category === "Launch") {
+    subtasks = [
+      { title: "Validate production configurations & environment variables", estimatedMinutes: 45 },
+      { title: "Coordinate team roles and prepare active rollback procedures", estimatedMinutes: 60 },
+      { title: "Go live, monitor server telemetry, and capture telemetry logs", estimatedMinutes: 120 }
+    ];
   }
 
   return {
     title,
-    description: `Voice-registered task details: "${transcript}" (Transferred into English Task Model)`,
+    description,
     category,
     priority,
     estimatedHours,
     deadline: deadlineDate.toISOString().split('T')[0],
-    subtasks: [
-      { title: "Review requirements and draft initial roadmap", estimatedMinutes: 45 },
-      { title: "Execute core task segments & content draft", estimatedMinutes: 90 },
-      { title: "Final quality checks, reviews and submission", estimatedMinutes: 30 }
-    ]
+    subtasks
   };
 };
 
 // API Route: Transcribe, translate, and parse voice task inputs
 app.post("/api/gemini/voice-task", async (req, res) => {
   try {
-    const { transcript } = req.body;
+    const { transcript, clientDate } = req.body;
     if (!transcript) {
       return res.status(400).json({ success: false, error: "Transcript is required" });
     }
@@ -633,7 +746,7 @@ app.post("/api/gemini/voice-task", async (req, res) => {
     // Fallback if no Gemini client is configured
     if (!ai) {
       console.log("[Voice Task] No API key, running mock translator & parser");
-      const parsed = mockParseVoiceTask(transcript);
+      const parsed = mockParseVoiceTask(transcript, clientDate);
       return res.json({
         success: true,
         task: parsed,
@@ -641,7 +754,12 @@ app.post("/api/gemini/voice-task", async (req, res) => {
       });
     }
 
-    const todayDateInfo = "Tuesday, June 23, 2026";
+    // Prepare contextual date anchor for precise ISO translation
+    const refDateStr = clientDate || "2026-06-25";
+    const refDate = new Date(refDateStr + 'T12:00:00');
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const todayDateInfo = refDate.toLocaleDateString('en-US', options) + ` (ISO Format: ${refDateStr})`;
+
     const parsePrompt = `
       You are 'The Last-Minute Life Saver' AI Voice Assistant.
       You will receive a voice transcript of a user describing a task they want to add to their calendar.
@@ -656,7 +774,7 @@ app.post("/api/gemini/voice-task", async (req, res) => {
          - category: Choose the most fitting category out of: 'Academics', 'Project', 'Launch', 'Work', 'Personal'.
          - priority: Choose one of: 'low' | 'medium' | 'high' | 'critical'.
          - estimatedHours: A number representing total hours (default to 2 if not stated).
-         - deadline: An ISO Date String (YYYY-MM-DD). Calculate this relative to current date: ${todayDateInfo}. E.g., 'tomorrow' or 'kal' is 2026-06-24, 'Monday' or 'somvar' is the next Monday (2026-06-29), etc. If no deadline is specified, default to 3 days from today (2026-06-26).
+         - deadline: An ISO Date String (YYYY-MM-DD). Calculate this relative to current date: ${todayDateInfo}. E.g., 'tomorrow' or 'kal' is 1 day after, 'parso' is 2 days after, 'Monday' or 'somvar' is the next Monday, etc. Calculate mathematically based on ISO: ${refDateStr}. If no deadline is specified, default to 3 days from ${refDateStr}.
          - subtasks: A list of 3-5 logical, smaller, sequential steps (subtasks) in English to complete the main task, each with an estimatedMinutes (number, typically 30-120 mins).
 
       User's Voice Transcript: "${transcript}"
@@ -705,7 +823,7 @@ app.post("/api/gemini/voice-task", async (req, res) => {
 
   } catch (err: any) {
     console.error("[Voice Task Error]", err);
-    const parsedFallback = mockParseVoiceTask(req.body.transcript || "");
+    const parsedFallback = mockParseVoiceTask(req.body.transcript || "", req.body.clientDate);
     return res.json({
       success: true,
       task: parsedFallback,

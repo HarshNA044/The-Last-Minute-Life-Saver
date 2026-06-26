@@ -10,6 +10,7 @@ interface CalendarPlannerProps {
   onClearBlocks: () => void;
   onAutoSchedule: () => void;
   onAddManualBlock: (title: string, startHour: number, endHour: number, type: 'focus' | 'break' | 'class') => void;
+  selectedDateStr: string;
 }
 
 export default function CalendarPlanner({
@@ -18,7 +19,8 @@ export default function CalendarPlanner({
   onToggleBlockComplete,
   onClearBlocks,
   onAutoSchedule,
-  onAddManualBlock
+  onAddManualBlock,
+  selectedDateStr
 }: CalendarPlannerProps) {
   // Simple form for manual adding
   const [newTitle, setNewTitle] = React.useState("");
@@ -26,9 +28,12 @@ export default function CalendarPlanner({
   const [startHour, setStartHour] = React.useState(14); // 2 PM default
   const [endHour, setEndHour] = React.useState(15);
 
+  // Filter blocks by currently selectedDateStr
+  const dailyBlocks = blocks.filter(b => b.start.startsWith(selectedDateStr));
+
   // Math to calculate stress level
   const incompleteSubtasks = tasks.flatMap(t => t.subtasks).filter(st => !st.completed);
-  const scheduledFocusMinutes = blocks
+  const scheduledFocusMinutes = dailyBlocks
     .filter(b => b.type === 'focus')
     .reduce((acc, b) => {
       const diffMs = new Date(b.end).getTime() - new Date(b.start).getTime();
@@ -68,7 +73,7 @@ export default function CalendarPlanner({
   }
 
   // Sorted list of blocks for neat list rendering
-  const sortedBlocks = [...blocks].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  const sortedBlocks = [...dailyBlocks].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
   const handleManualForm = (e: React.FormEvent) => {
     e.preventDefault();

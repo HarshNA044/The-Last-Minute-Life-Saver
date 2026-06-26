@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, AlertCircle, Sparkles, FolderOpen, Image } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Sparkles, FolderOpen, Image, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SyllabusUploaderProps {
@@ -59,6 +59,80 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Voice input states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.warn("Error stopping speech recognition:", e);
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+    startListening();
+  };
+
+  const startListening = () => {
+    setVoiceError(null);
+    setErrorMessage(null);
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceError("Microphone speech recognition is not supported in this browser. Please use Google Chrome.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = voiceLanguage; 
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setStatusText(voiceLanguage === 'hi-IN' ? "Aap boliye, hum sun rahe hain... 🎙️" : "Listening to your voice input... 🎙️");
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event);
+        if (event.error === 'no-speech') {
+          setVoiceError("No speech detected. Please speak near your microphone.");
+        } else {
+          setVoiceError(`Speech recognition error: ${event.error || "failed"}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        
+        setPastedText(transcript);
+      };
+
+      recognition.start();
+    } catch (err: any) {
+      console.error(err);
+      setVoiceError("Could not start speech recognition service.");
+      setIsListening(false);
+    }
+  };
+
   // Parse simulated file or direct text upload
   const handleExtractPress = async (customContent?: string) => {
     const textToAnalyze = customContent || pastedText.trim();
@@ -75,7 +149,10 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
       const response = await fetch("/api/gemini/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ textContent: textToAnalyze }),
+        body: JSON.stringify({ 
+          textContent: textToAnalyze,
+          clientDate: new Date().toISOString().split('T')[0]
+        }),
       });
 
       if (!response.ok) throw new Error("Server extraction pipeline error");
@@ -110,10 +187,26 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
   const processSimulatedFile = (filename: string) => {
     setIsProcessing(true);
-    setStatusText(`Simulating optical OCR scanner on: ${filename}...`);
+    setStatusText(`Simulating OCR Scanner on uploaded brief: ${filename}...`);
     setTimeout(() => {
-      // Create interesting preset based on filename
-      const simulatedText = `Extracted Text from OCR of: ${filename}\nDue July 12th, 2026: Physics Lab 4 on Electromagnetic waves and optical polarization. Estimated 5 hours. Subtasks: read manual Chapter 12; calibrate simulation model parameters; draft physics report.`;
+      // Generate realistic extracted text with today, yesterday, and tomorrow relative dates
+      const nameLower = filename.toLowerCase();
+      let dateKeyword = "today";
+      if (nameLower.includes("yesterday") || nameLower.includes("backlog")) {
+        dateKeyword = "yesterday";
+      } else if (nameLower.includes("tomorrow") || nameLower.includes("future") || nameLower.includes("prep")) {
+        dateKeyword = "tomorrow";
+      } else {
+        // If it's a generic file, include yesterday, today, and tomorrow references to showcase parsing!
+        const simulatedText = `Syllabus Schedule from OCR scan of ${filename}:
+- Math homework on partial derivatives is due yesterday. 3 hours.
+- Computer Science assignment on binary search trees is due today. 5 hours.
+- Physics Lab report on lens magnification and refraction is due tomorrow. 4 hours.`;
+        handleExtractPress(simulatedText);
+        return;
+      }
+      
+      const simulatedText = `Extracted Text from OCR of: ${filename}\nDue ${dateKeyword}: Physics Project Milestone 2. Estimated 4 hours. Subtasks: finalize circuit assembly; measure resistance coefficients; write final report.`;
       handleExtractPress(simulatedText);
     }, 1500);
   };
@@ -186,6 +279,74 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
               </button>
             )}
           </div>
+
+          {/* Voice Microphone Controls panel */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-950/40 border border-neutral-850 p-3 rounded-xl">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold font-sans transition-all duration-300 cursor-pointer ${
+                  isListening
+                    ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/35"
+                    : "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 hover:text-amber-300"
+                }`}
+                title="Dictate project schedules using voice"
+              >
+                {isListening ? (
+                  <>
+                    <MicOff className="w-4 h-4 text-white" />
+                    <span>Stop Recording</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-4 h-4 text-amber-400" />
+                    <span>Speak Brief (Mic)</span>
+                  </>
+                )}
+              </button>
+              
+              {isListening && (
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-rose-400 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>Listening...</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-neutral-500">Language:</span>
+              <button
+                type="button"
+                onClick={() => setVoiceLanguage('en-IN')}
+                className={`px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors cursor-pointer ${
+                  voiceLanguage === 'en-IN'
+                    ? "bg-amber-500 text-neutral-950 font-semibold"
+                    : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
+                }`}
+              >
+                Hinglish/English 🇮🇳
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceLanguage('hi-IN')}
+                className={`px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors cursor-pointer ${
+                  voiceLanguage === 'hi-IN'
+                    ? "bg-amber-500 text-neutral-950 font-semibold"
+                    : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
+                }`}
+              >
+                Hindi/हिन्दी 🇮🇳
+              </button>
+            </div>
+          </div>
+
+          {voiceError && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs px-3.5 py-2.5 rounded-xl flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{voiceError}</span>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3.5">
             {/* Drag and Drop Zone */}

@@ -36,22 +36,34 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
   const [viewMode, setViewMode] = useState<'daywise' | 'monthwise'>('daywise');
   const [showHelp, setShowHelp] = useState(false);
   
-  // Anchored around June 25, 2026 as default
-  const [selectedDayStr, setSelectedDayStr] = useState<string>('2026-06-25');
-  const [selectedMonthStr, setSelectedMonthStr] = useState<string>('2026-06');
+  // Dynamic helper for today's default date representation
+  const getTodayOffsetStr = (offset: number = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [selectedDayStr, setSelectedDayStr] = useState<string>(getTodayOffsetStr(0));
+  const [selectedMonthStr, setSelectedMonthStr] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+  });
 
   // Normalized date parser helper (same as DeadlinesList to align dates correctly)
   const getNormalizedDate = (dateStr: string): string => {
-    if (!dateStr) return '2026-06-25';
+    if (!dateStr) return getTodayOffsetStr(0);
     const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       return `${match[1]}-${match[2]}-${match[3]}`;
     }
     
     const lower = dateStr.toLowerCase();
-    if (lower.includes('today')) return '2026-06-25';
-    if (lower.includes('tomorrow')) return '2026-06-26';
-    if (lower.includes('yesterday')) return '2026-06-24';
+    if (lower.includes('today')) return getTodayOffsetStr(0);
+    if (lower.includes('tomorrow')) return getTodayOffsetStr(1);
+    if (lower.includes('yesterday')) return getTodayOffsetStr(-1);
     
     // Parse timestamp
     const parsed = Date.parse(dateStr);
@@ -63,7 +75,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
       return `${y}-${m}-${day}`;
     }
     
-    return '2026-06-25';
+    return getTodayOffsetStr(0);
   };
 
   const getNormalizedMonthStr = (dateStr: string): string => {
@@ -118,8 +130,8 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
     // Accumulate tasks by date
     const dateMap: Record<string, { completed: number; remaining: number }> = {};
     
-    // Seed standard baseline window around Jun 25
-    const baselineDate = new Date('2026-06-25T00:00:00');
+    // Seed standard baseline window around actual dynamic today
+    const baselineDate = new Date();
     for (let i = -4; i <= 4; i++) {
       const d = new Date(baselineDate);
       d.setDate(d.getDate() + i);
