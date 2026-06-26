@@ -61,7 +61,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
   // Voice input states
   const [isListening, setIsListening] = useState(false);
-  const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
+  const voiceLanguage = 'en-IN'; // Default to Hinglish/English
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -99,7 +99,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
       recognition.onstart = () => {
         setIsListening(true);
-        setStatusText(voiceLanguage === 'hi-IN' ? "Aap boliye, hum sun rahe hain... 🎙️" : "Listening to your voice input... 🎙️");
+        setStatusText("Listening to Hinglish/English voice input... 🎙️");
       };
 
       recognition.onerror = (event: any) => {
@@ -277,80 +277,50 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
             <textarea
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste project briefs, syllabus segments, task list, or type something like:
-- Client feedback and deck revisions due Friday, estimate 4 hours.
-- Calculus exam prep or marketing kickoff plan due July 15."
-              className="w-full min-h-[140px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 border border-neutral-800/60 focus:border-amber-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
+              placeholder="Paste syllabus segments, project briefs, or type: Client feedback due Friday, estimate 4 hours."
+              className="w-full min-h-[105px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 pr-12 pb-14 border border-neutral-800/60 focus:border-amber-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
               disabled={isProcessing}
             />
-            {pastedText && (
-              <button
-                onClick={() => setPastedText("")}
-                className="absolute right-3.5 bottom-3.5 text-[10px] font-mono text-neutral-500 hover:text-neutral-300 transition-colors bg-neutral-900 border border-neutral-800 px-2 py-1 rounded"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Voice Microphone Controls panel */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-950/40 border border-neutral-850 p-3 rounded-xl">
-            <div className="flex items-center gap-2.5">
+            <div className="absolute right-3.5 bottom-3.5 flex items-center gap-2">
               <button
                 type="button"
                 onClick={toggleListening}
-                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold font-sans transition-all duration-300 cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-sans font-bold transition-all duration-300 cursor-pointer ${
                   isListening
-                    ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/35"
-                    : "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 hover:text-amber-300"
+                    ? "bg-rose-600 text-white animate-pulse shadow-md shadow-rose-500/25 opacity-100"
+                    : "bg-amber-500 hover:bg-amber-400 text-neutral-950 opacity-100 shadow-sm"
                 }`}
                 title="Dictate project schedules using voice"
               >
                 {isListening ? (
                   <>
-                    <MicOff className="w-4 h-4 text-white" />
-                    <span>Stop Recording</span>
+                    <MicOff className="w-3.5 h-3.5 text-white animate-pulse opacity-100" />
+                    <span className="opacity-100">Stop Mic</span>
                   </>
                 ) : (
                   <>
-                    <Mic className="w-4 h-4 text-amber-400" />
-                    <span>Speak Brief (Mic)</span>
+                    <Mic className="w-3.5 h-3.5 text-neutral-950 opacity-100 stroke-[2.5]" />
+                    <span className="opacity-100">Speak (Mic)</span>
                   </>
                 )}
               </button>
-              
+
               {isListening && (
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-rose-400 animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>Listening...</span>
+                <div className="flex items-center gap-1 text-[9px] font-mono text-rose-400 animate-pulse bg-neutral-900 border border-neutral-800 px-2 py-1 rounded">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  <span>On</span>
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-neutral-500">Language:</span>
-              <button
-                type="button"
-                onClick={() => setVoiceLanguage('en-IN')}
-                className={`px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors cursor-pointer ${
-                  voiceLanguage === 'en-IN'
-                    ? "bg-amber-500 text-neutral-950 font-semibold"
-                    : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                Hinglish/English 🇮🇳
-              </button>
-              <button
-                type="button"
-                onClick={() => setVoiceLanguage('hi-IN')}
-                className={`px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors cursor-pointer ${
-                  voiceLanguage === 'hi-IN'
-                    ? "bg-amber-500 text-neutral-950 font-semibold"
-                    : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                Hindi/हिन्दी 🇮🇳
-              </button>
+              {pastedText && (
+                <button
+                  type="button"
+                  onClick={() => setPastedText("")}
+                  className="text-[10px] font-mono text-neutral-500 hover:text-neutral-300 transition-colors bg-neutral-900 border border-neutral-800 px-2 py-1.5 rounded-lg"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 

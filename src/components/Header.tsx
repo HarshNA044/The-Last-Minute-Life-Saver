@@ -92,11 +92,49 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
 
       {/* Control Switch */}
       <div className="flex items-center gap-3">
-        {/* Improved Theme Toggle Button (Circular) */}
-        <button
+        {/* Real-time Status Bar Area */}
+        <motion.div
+          key={`status-bar-${theme}`}
+          initial={{ opacity: 0, scale: 0.96, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 4 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className={`hidden md:flex items-center gap-2.5 px-4 py-1.5 rounded-full border transition-all duration-300 ${
+            isDark
+              ? 'bg-neutral-900/60 border-neutral-800 text-neutral-300'
+              : 'bg-slate-50 border-slate-200 text-slate-700 shadow-inner'
+          }`}
+          id="status-bar-area"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+              isProcessing ? 'bg-amber-400' : 'bg-emerald-400'
+            }`} />
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${
+              isProcessing ? 'bg-amber-500' : 'bg-emerald-500'
+            }`} />
+          </span>
+          <span className={`font-mono text-[9px] uppercase tracking-wider font-bold ${
+            isDark ? 'text-neutral-500' : 'text-slate-400'
+          }`}>
+            Status:
+          </span>
+          <span className="font-mono text-[10px] truncate max-w-[180px] lg:max-w-[260px] font-medium" title={statusText}>
+            {statusText}
+          </span>
+        </motion.div>
+
+        {/* Improved Theme Toggle Button (Circular with tactile feedback) */}
+        <motion.button
           onClick={onToggleTheme}
           type="button"
-          className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm active:scale-90 ${
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.9, rotate: theme === 'dark' ? 15 : -15 }}
+          animate={{
+            rotate: theme === 'dark' ? 360 : 0,
+          }}
+          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm ${
             isDark
               ? 'bg-neutral-900 border-neutral-800 text-amber-400 hover:text-amber-300 hover:border-neutral-700 hover:bg-neutral-850 hover:shadow-md hover:shadow-amber-500/10'
               : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 hover:bg-slate-100/80 hover:shadow-md hover:shadow-slate-200/50'
@@ -121,7 +159,7 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
               )}
             </motion.div>
           </AnimatePresence>
-        </button>
+        </motion.button>
 
         {/* User profile with inline transition option */}
         {user && (

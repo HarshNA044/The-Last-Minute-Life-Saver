@@ -88,7 +88,7 @@ export default function DeadlinesList({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN'); // Default to Indian English/Hinglish, support Hindi
+  const voiceLanguage = 'en-IN'; // Default to Indian English/Hinglish
   const [autoSubmitVoice, setAutoSubmitVoice] = useState(false); // Instantly schedule task on speak
   const recognitionRef = React.useRef<any>(null);
 
@@ -569,114 +569,93 @@ export default function DeadlinesList({
               Schedule New Milestone / Deliverable
             </h3>
 
-            {/* Elegant Voice Helper Panel */}
-            <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden" id="voice-quick-add-panel">
-              <div className="flex items-start gap-3 w-full">
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  disabled={isProcessingVoice}
-                  className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center transition-all duration-300 shadow-md ${
-                    isListening 
-                      ? "bg-rose-500 text-white animate-pulse shadow-rose-500/30 scale-105" 
-                      : isProcessingVoice 
-                        ? "bg-amber-500 text-neutral-950" 
-                        : "bg-neutral-950 border border-neutral-800 text-amber-500 hover:text-amber-400 hover:border-amber-500/30"
-                  }`}
-                  title={isListening ? "Stop listening and parse" : "Speak to add task"}
-                >
-                  {isProcessingVoice ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : isListening ? (
-                    <MicOff className="w-5 h-5 animate-pulse" />
-                  ) : (
-                    <Mic className="w-5 h-5" />
-                  )}
-                </button>
-                <div className="space-y-1 flex-1 min-w-0">
-                  <h4 className="text-xs font-mono font-medium text-neutral-200 uppercase tracking-wide flex items-center flex-wrap gap-1.5">
-                    🎙️ Voice Auto-Fill Assistant
-                    {isListening && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-500/10 text-rose-400 text-[9px] rounded font-mono animate-pulse">
-                        Listening... Click mic to Stop & AI Parse
-                      </span>
-                    )}
-                    {isProcessingVoice && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] rounded font-mono animate-pulse">
-                        AI Translating & Formatting...
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed font-sans max-w-lg break-words">
-                    {voiceTranscript ? (
-                      <span className="text-amber-400 italic font-medium">"{voiceTranscript}"</span>
-                    ) : (
-                      <span>
-                        Speak in Hindi, Hinglish, or English. e.g. <span className="text-amber-500/90 font-mono">"kal exam hai physics ka, revision karna hai subah 9 baje"</span> or <span className="text-amber-500/90 font-mono">"submit assignment next Friday, include design subtasks"</span>
-                      </span>
-                    )}
-                  </p>
-                  {voiceError && (
-                    <p className="text-[10px] text-rose-400 font-mono flex items-center gap-1">
-                      ⚠️ {voiceError}
-                    </p>
-                  )}
-                </div>
-              </div>
-              
-              {/* Voice controls (Language selection & Auto-Submit options) */}
-              <div className="flex flex-wrap items-center gap-3 shrink-0 self-end md:self-center">
-                <div className="flex items-center gap-2 bg-neutral-950/60 px-2 py-1.5 rounded-lg border border-neutral-850">
-                  <input
-                    type="checkbox"
-                    id="auto-submit-voice"
-                    checked={autoSubmitVoice}
-                    onChange={(e) => setAutoSubmitVoice(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer"
-                  />
-                  <label htmlFor="auto-submit-voice" className="text-[10px] font-mono text-neutral-400 cursor-pointer select-none">
-                    🚀 Auto-Schedule
-                  </label>
-                </div>
-
-                <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-850">
-                  <button
-                    type="button"
-                    onClick={() => setVoiceLanguage('en-IN')}
-                    className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
-                      voiceLanguage === 'en-IN' 
-                        ? "bg-neutral-800 text-amber-400 font-medium" 
-                        : "text-neutral-500 hover:text-neutral-300"
-                    }`}
-                  >
-                    🇮🇳 Hinglish / Eng
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVoiceLanguage('hi-IN')}
-                    className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
-                      voiceLanguage === 'hi-IN' 
-                        ? "bg-neutral-800 text-amber-400 font-medium" 
-                        : "text-neutral-500 hover:text-neutral-300"
-                    }`}
-                  >
-                    🇮🇳 Hindi
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Task Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Client Deck, Project Launch, Study Prep, Presentation"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-mono text-neutral-500 uppercase">Task Title *</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      id="auto-submit-voice"
+                      checked={autoSubmitVoice}
+                      onChange={(e) => setAutoSubmitVoice(e.target.checked)}
+                      className="w-3 h-3 accent-amber-500 rounded cursor-pointer"
+                    />
+                    <label htmlFor="auto-submit-voice" className="text-[9px] font-mono text-neutral-500 hover:text-neutral-400 cursor-pointer select-none">
+                      🚀 Auto-Schedule Voice
+                    </label>
+                  </div>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Exam on physics tomorrow, revise at 9 AM"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full text-xs py-1.5 px-3 pr-20 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    disabled={isProcessingVoice}
+                    className={`absolute right-1.5 px-2.5 py-1 rounded-md transition-all duration-200 cursor-pointer flex items-center gap-1 ${
+                      isListening 
+                        ? "bg-rose-600 text-white animate-pulse shadow-md shadow-rose-500/25 scale-105 opacity-100" 
+                        : isProcessingVoice 
+                          ? "bg-yellow-500 text-neutral-950 font-bold opacity-100 animate-pulse" 
+                          : "bg-amber-500 hover:bg-amber-400 text-neutral-950 opacity-100 font-bold shadow-sm"
+                    }`}
+                    title={isListening ? "Stop listening & fill form via AI" : "Speak to auto-fill this form"}
+                  >
+                    {isProcessingVoice ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-950" />
+                    ) : isListening ? (
+                      <>
+                        <MicOff className="w-3.5 h-3.5 animate-pulse opacity-100" />
+                        <span className="text-[9px] font-mono font-bold opacity-100">Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3.5 h-3.5 text-neutral-950 opacity-100 stroke-[2.5]" />
+                        <span className="text-[9px] font-mono font-bold opacity-100">Speak</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Compact inline Voice Feedback / Status */}
+                {(isListening || isProcessingVoice || voiceTranscript || voiceError) && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 text-[11px] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+                        🎙️ Voice Intelligence
+                      </span>
+                      {isListening && (
+                        <span className="text-rose-400 font-mono text-[9px] animate-pulse">
+                          Listening...
+                        </span>
+                      )}
+                      {isProcessingVoice && (
+                        <span className="text-amber-400 font-mono text-[9px] animate-pulse">
+                          AI auto-parsing...
+                        </span>
+                      )}
+                    </div>
+                    {voiceTranscript ? (
+                      <p className="text-amber-400 font-sans italic">"{voiceTranscript}"</p>
+                    ) : (
+                      <p className="text-neutral-500 font-sans leading-relaxed text-[10px]">
+                        Speak naturally (Hinglish/English). E.g. <span className="text-amber-500/80">"submit project Friday, include 3 subtasks"</span>. We'll instantly extract title, deadline, and sub-steps!
+                      </p>
+                    )}
+                    {voiceError && (
+                      <p className="text-[10px] text-rose-400 font-mono">
+                        ⚠️ {voiceError}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Target Due Date</label>
@@ -744,7 +723,7 @@ export default function DeadlinesList({
               <textarea
                 value={rawSubtasks}
                 onChange={(e) => setRawSubtasks(e.target.value)}
-                placeholder="Step 1: Review project brief or study materials&#10;Step 2: Draft initial outline or structure&#10;Step 3: Complete execution & review"
+                placeholder="e.g. Step 1: Review materials. Step 2: Draft outline. Step 3: Complete & review."
                 rows={3}
                 className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-mono"
               />
@@ -1212,7 +1191,7 @@ export default function DeadlinesList({
                   return (
                     <motion.div
                       key={task.id}
-                      layoutId={`task-card-${task.id}`}
+                      layout="position"
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
@@ -1277,11 +1256,20 @@ export default function DeadlinesList({
                                 transition={{ duration: 0.4, ease: "easeOut" }}
                               />
                             </svg>
-                            {/* Inner embedded labels */}
+                            {/* Inner embedded labels with fast responsive count transitions */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center select-none leading-none">
-                              <span className="text-xs font-bold text-neutral-100 font-mono">
-                                {pct}%
-                              </span>
+                              <AnimatePresence mode="popLayout" initial={false}>
+                                <motion.span
+                                  key={pct}
+                                  initial={{ scale: 0.8, opacity: 0.6 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 1.1, opacity: 0 }}
+                                  transition={{ duration: 0.2, ease: "easeOut" }}
+                                  className="text-xs font-bold text-neutral-100 font-mono"
+                                >
+                                  {pct}%
+                                </motion.span>
+                              </AnimatePresence>
                               <span className="text-[8px] font-semibold text-neutral-500 font-mono mt-0.5">
                                 {completedSubs}/{totalSubs}
                               </span>
