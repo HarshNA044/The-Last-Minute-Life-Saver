@@ -104,10 +104,13 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
       recognition.onerror = (event: any) => {
         console.error("Speech recognition error:", event);
-        if (event.error === 'no-speech') {
-          setVoiceError("No speech detected. Please speak near your microphone.");
+        const errType = event ? event.error : "";
+        if (errType === 'no-speech') {
+          setVoiceError("No speech detected. Please speak clearly near your microphone.");
+        } else if (errType === 'not-allowed') {
+          setVoiceError("Microphone permission is blocked in this preview iframe. Try opening the app in a new tab, or type/paste your Hinglish text directly into the textbox below to test!");
         } else {
-          setVoiceError(`Speech recognition error: ${event.error || "failed"}`);
+          setVoiceError(`Speech recognition is restricted in some iframe sandboxes. You can type/paste your Hinglish syllabus details directly into the text box below to parse!`);
         }
         setIsListening(false);
       };

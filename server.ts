@@ -135,9 +135,6 @@ app.post("/api/auth/send-otp", async (req, res) => {
 
 // Helper function to mock parse syllabus or text prompts with relative date matching
 const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
-  const lower = (textContent || "").toLowerCase();
-  
-  // Parse clientDate or default to today's date
   const refDateStr = clientDate || new Date().toISOString().split('T')[0];
   const parts = refDateStr.split('-');
   const today = parts.length === 3 
@@ -153,84 +150,191 @@ const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
     return `${y}-${m}-${day}`;
   };
 
-  let tasks = [];
+  const cleanText = textContent || "";
+  const lines = cleanText
+    .split(/\n|\r|;|•|\|/)
+    .map(line => line.trim())
+    .filter(line => line.length > 5);
 
-  // Subject and Category detection
-  let subject = "Academics";
-  let category = "Academics";
-  if (lower.includes("physics") || lower.includes("bhautik")) {
-    subject = "Physics Lab";
-    category = "Academics";
-  } else if (lower.includes("math") || lower.includes("calculus") || lower.includes("ganit")) {
-    subject = "Mathematics Quiz";
-    category = "Academics";
-  } else if (lower.includes("computer") || lower.includes("cs") || lower.includes("coding") || lower.includes("lab") || lower.includes("os")) {
-    subject = "Computer Science Assignment";
-    category = "Project";
-  } else if (lower.includes("marketing") || lower.includes("campaign") || lower.includes("launch")) {
-    subject = "Marketing Campaign";
-    category = "Launch";
-  } else if (lower.includes("history") || lower.includes("itihas")) {
-    subject = "History Research Paper";
-    category = "Project";
-  }
+  let extractedTasks: any[] = [];
 
-  // Look for relative keywords "yesterday" (or "kal" in a past context), "tomorrow" (or "kal"), and "today" (or "aaj")
-  const hasYesterday = lower.includes("yesterday") || (lower.includes("kal") && (lower.includes("tha") || lower.includes("beeta") || lower.includes("was")));
-  const hasTomorrow = lower.includes("tomorrow") || lower.includes("tommorow") || lower.includes("kal") || lower.includes("parso") || lower.includes("parson");
-  const hasToday = lower.includes("today") || lower.includes("aaj") || (!hasYesterday && !hasTomorrow); // default to today if unspecified
+  for (const line of lines) {
+    const lineLower = line.toLowerCase();
+    
+    // Relative Date Detection for this specific line
+    let offset = 0; // default to today
+    let foundRelative = false;
+    let deadlineStr = "";
 
-  if (hasYesterday) {
-    tasks.push({
-      title: `${subject} Revision`,
-      description: `Auto-translated assignment due yesterday: "${textContent}"`,
-      originalDeadline: getOffsetDateStr(-1),
-      priority: "high",
-      estimatedHours: 3.5,
+    // Parse yesterday
+    if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
+      offset = -1;
+      foundRelative = true;
+      deadlineStr = getOffsetDateStr(-1);
+    }
+    // Parse tomorrow
+    else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
+      if (lineLower.includes("parso") || lineLower.includes("parson")) {
+        offset = 2;
+      } else {
+        offset = 1;
+      }
+      foundRelative = true;
+      deadlineStr = getOffsetDateStr(offset);
+    }
+    // Parse today
+    else if (lineLower.includes("today") || lineLower.includes("aaj") || lineLower.includes("now") || lineLower.includes("abhibhi")) {
+      offset = 0;
+      foundRelative = true;
+      deadlineStr = getOffsetDateStr(0);
+    }
+
+    if (!foundRelative) {
+      // If no relative date keyword is found in this specific line, continue to keep it separate or assign today
+      continue;
+    }
+
+    // Subject/Category Detection
+    let subject = "Academics";
+    let category = "Academics";
+    let estHours = 3;
+    let priority = "medium";
+
+    if (lineLower.includes("physics") || lineLower.includes("bhautik") || lineLower.includes("lab")) {
+      subject = "Physics Lab Report";
+      category = "Academics";
+      estHours = 4;
+      priority = "high";
+    } else if (lineLower.includes("math") || lineLower.includes("calculus") || lineLower.includes("ganit") || lineLower.includes("quiz")) {
+      subject = "Math Assignment";
+      category = "Academics";
+      estHours = 3;
+      priority = "critical";
+    } else if (lineLower.includes("computer") || lineLower.includes("cs") || lineLower.includes("coding") || lineLower.includes("programming") || lineLower.includes("project")) {
+      subject = "Computer Science Project";
+      category = "Project";
+      estHours = 6;
+      priority = "high";
+    } else if (lineLower.includes("marketing") || lineLower.includes("campaign") || lineLower.includes("launch")) {
+      subject = "Marketing Strategy";
+      category = "Launch";
+      estHours = 5;
+      priority = "high";
+    } else if (lineLower.includes("history") || lineLower.includes("itihas") || lineLower.includes("essay")) {
+      subject = "History Research Essay";
+      category = "Project";
+      estHours = 4;
+      priority = "medium";
+    } else if (lineLower.includes("chemistry") || lineLower.includes("chem")) {
+      subject = "Chemistry Practical";
+      category = "Academics";
+      estHours = 3;
+      priority = "medium";
+    } else if (lineLower.includes("biology") || lineLower.includes("bio")) {
+      subject = "Biology Diagram Task";
+      category = "Academics";
+      estHours = 2;
+      priority = "low";
+    } else {
+      // Extract first 4 words of the line to make it customized!
+      const words = line.split(/\s+/).filter(w => w.trim().length > 0).slice(0, 4);
+      subject = words.join(" ") || "Syllabus Task";
+      // Clean leading bullet marks
+      subject = subject.replace(/^[-*•+\s]+/, "");
+      // Capitalize first letter
+      subject = subject.charAt(0).toUpperCase() + subject.slice(1);
+    }
+
+    // Refined title by date
+    let formattedTitle = subject;
+    if (offset === -1) {
+      formattedTitle = `${subject} (Backlog)`;
+    } else if (offset === 0) {
+      formattedTitle = `${subject} (Due Today)`;
+    } else if (offset === 1) {
+      formattedTitle = `${subject} (Due Tomorrow)`;
+    } else if (offset === 2) {
+      formattedTitle = `${subject} (Due Day After)`;
+    }
+
+    // Subtasks generation
+    const subtasks = [
+      { title: `Read the syllabus and criteria details thoroughly`, estimatedMinutes: 45 },
+      { title: `Draft core structure & gather references in English`, estimatedMinutes: 90 },
+      { title: `Incorporate Indian speaking context adjustments & verify results`, estimatedMinutes: 45 },
+      { title: `Final formatting and submit on student dashboard`, estimatedMinutes: 30 }
+    ];
+
+    extractedTasks.push({
+      title: formattedTitle,
+      description: `Auto-extracted from: "${line}"`,
+      originalDeadline: deadlineStr,
+      priority: priority,
+      estimatedHours: estHours,
       category: category,
-      subtasks: [
-        { title: "Review past requirements and syllabus milestones", estimatedMinutes: 45 },
-        { title: "Draft high-priority sections to clear backlog", estimatedMinutes: 120 },
-        { title: "Final check and submit on student portal", estimatedMinutes: 45 }
-      ]
+      subtasks: subtasks
     });
   }
-  
-  if (hasToday) {
-    tasks.push({
-      title: `${subject} Urgency`,
-      description: `Auto-translated assignment due today: "${textContent}"`,
-      originalDeadline: getOffsetDateStr(0),
-      priority: "critical",
-      estimatedHours: 4,
-      category: category,
-      subtasks: [
-        { title: "Review assignment criteria and layout guidelines", estimatedMinutes: 60 },
-        { title: "Execute priority modules and content development", estimatedMinutes: 150 },
-        { title: "Perform final verification checks & submit", estimatedMinutes: 30 }
-      ]
-    });
+
+  // Fallback if no specific dynamic relative dates detected
+  if (extractedTasks.length === 0) {
+    const lower = cleanText.toLowerCase();
+    let hasYesterday = lower.includes("yesterday") || (lower.includes("kal") && (lower.includes("tha") || lower.includes("beeta") || lower.includes("was")));
+    let hasTomorrow = lower.includes("tomorrow") || lower.includes("tommorow") || lower.includes("kal") || lower.includes("parso") || lower.includes("parson");
+    let hasToday = lower.includes("today") || lower.includes("aaj") || (!hasYesterday && !hasTomorrow);
+
+    if (hasYesterday) {
+      extractedTasks.push({
+        title: "Academics Revision (Backlog)",
+        description: `Auto-parsed task due yesterday: "${cleanText}"`,
+        originalDeadline: getOffsetDateStr(-1),
+        priority: "high",
+        estimatedHours: 3.5,
+        category: "Academics",
+        subtasks: [
+          { title: "Review instructions and guidelines", estimatedMinutes: 45 },
+          { title: "Draft core sections to clear backlog", estimatedMinutes: 120 },
+          { title: "Review and submit", estimatedMinutes: 45 }
+        ]
+      });
+    }
+
+    if (hasToday) {
+      extractedTasks.push({
+        title: "Urgent Project (Due Today)",
+        description: `Auto-parsed task due today: "${cleanText}"`,
+        originalDeadline: getOffsetDateStr(0),
+        priority: "critical",
+        estimatedHours: 4,
+        category: "Project",
+        subtasks: [
+          { title: "Review criteria and structure requirements", estimatedMinutes: 60 },
+          { title: "Implement key elements of task", estimatedMinutes: 150 },
+          { title: "Verify output and submit", estimatedMinutes: 30 }
+        ]
+      });
+    }
+
+    if (hasTomorrow) {
+      extractedTasks.push({
+        title: "Syllabus Prep (Due Tomorrow)",
+        description: `Auto-parsed task due tomorrow: "${cleanText}"`,
+        originalDeadline: getOffsetDateStr(1),
+        priority: "high",
+        estimatedHours: 4.5,
+        category: "Academics",
+        subtasks: [
+          { title: "Deconstruct assignment rules & requirements", estimatedMinutes: 45 },
+          { title: "Develop core implementation and draft sections", estimatedMinutes: 180 },
+          { title: "Refine language or code and execute submission", estimatedMinutes: 45 }
+        ]
+      });
+    }
   }
 
-  if (hasTomorrow) {
-    tasks.push({
-      title: `${subject} Prep`,
-      description: `Auto-translated assignment due tomorrow: "${textContent}"`,
-      originalDeadline: getOffsetDateStr(1),
-      priority: "high",
-      estimatedHours: 4.5,
-      category: category,
-      subtasks: [
-        { title: "Deconstruct assignment rules & requirements", estimatedMinutes: 45 },
-        { title: "Develop core implementation and draft sections", estimatedMinutes: 180 },
-        { title: "Refine language or code and execute submission", estimatedMinutes: 45 }
-      ]
-    });
-  }
-
-  // Fallback if no specific dynamic relative dates detected (or to ensure variety)
-  if (tasks.length === 0) {
-    tasks.push({
+  // Final fallback to baseline tasks if still empty
+  if (extractedTasks.length === 0) {
+    extractedTasks.push({
       title: "Math 101 Midterm Prep",
       description: "Covers Chapters 1-4: Limits, derivatives, optimization problems, and curve sketching.",
       originalDeadline: getOffsetDateStr(2),
@@ -244,7 +348,7 @@ const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
         { title: "Run dynamic 45-minute practice diagnostic test", estimatedMinutes: 45 }
       ]
     });
-    tasks.push({
+    extractedTasks.push({
       title: "Computer Science BST Assignment",
       description: "Implement core insertion, deletion, and rotation commands in standard Python without external helpers.",
       originalDeadline: getOffsetDateStr(5),
@@ -260,7 +364,7 @@ const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
     });
   }
 
-  return tasks;
+  return extractedTasks;
 };
 
 // API Route: Extraction of Tasks from files or syllabus texts
