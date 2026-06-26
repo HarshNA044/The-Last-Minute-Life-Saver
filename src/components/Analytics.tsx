@@ -347,11 +347,11 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
                 Adaptive Analytics Engine
               </h3>
               <p>
-                We parse your syllabus files, extract scheduled deliverables, and track completion indices dynamically.
+                We parse your syllabus files or project briefs, extract scheduled deliverables, and track completion indices dynamically.
               </p>
               <ul className="list-disc list-inside space-y-1 pl-1">
                 <li><span className="text-amber-400 font-medium">Gold Area</span>: Volume of checklist actions completed.</li>
-                <li><span className="text-neutral-500 font-medium">Gray Area</span>: Leftover syllabus workload.</li>
+                <li><span className="text-neutral-500 font-medium">Gray Area</span>: Leftover schedule workload.</li>
                 <li><span className="text-emerald-400 font-medium">Trend Curve (%)</span>: Real-time efficiency velocity. Selecting specific days/months below reveals precise animated completion sliders.</li>
               </ul>
             </div>
@@ -534,7 +534,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
             <AlertCircle className="w-8 h-8 text-amber-500/80 mb-2 animate-bounce" />
             <h4 className="font-sans font-medium text-xs text-neutral-200">Demonstration Analytics Active</h4>
             <p className="font-sans text-[11px] text-neutral-400 max-w-sm mt-1">
-              Import a syllabus document or schedule assignments to display active completion rates!
+              Import a task brief or schedule deliverables to display active completion rates!
             </p>
           </div>
         )}

@@ -36,6 +36,20 @@ REQUIRED RELEASES:
 * Lab 1: Thread Scheduling & Locks synchronization. Implement thread sleep, yield, join loops. Due July 4th, 2026 at midnight.
 * Major Project: Design virtual memory memory map file system. Requires custom TLB page replacement algorithms. Due July 20th, 2026 (very heavy load!).
 `
+  },
+  {
+    id: "marketing",
+    label: "Product Launch Brief (Pasted text)",
+    category: "Business",
+    description: "Comprehensive timeline of campaign launches, press release schedules, and marketing deliverables.",
+    content: `Q3 Product Launch Plan
+Owner: Launch Management Office (Fall 2026)
+
+CRITICAL DEADLINES:
+* Kickoff Brief: Finalize slide deck and coordinate investor calendar invitations next Wednesday, July 1st, 2026.
+* Social Media Assets: Create image banners, copy drafts, and coordinate publication approvals due Wednesday July 8th, 2026.
+* Press Release Wire: Release official announcement wire to media outlets, covers core architecture and client pricing - due Thursday, July 16th, 2026.
+`
   }
 ];
 
@@ -130,17 +144,17 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
         <div>
           <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
             <FolderOpen className="w-4 h-4 text-amber-500" />
-            Syllabus & Assignment Importer
+            Project Brief & Syllabus Importer
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            Paste course materials, study prompts, or upload a syllabus file to automatically generate structured milestones.
+            Paste project briefs, work deliverables, meeting prompts, or upload files to automatically generate structured milestones.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isProcessing ? (
             <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs font-mono text-amber-400">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-              Parsing Syllabus...
+              Parsing Schedules...
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-neutral-950/60 rounded-full text-[10px] font-mono text-neutral-500">
@@ -157,9 +171,9 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
             <textarea
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste syllabus segments, task list, or type something like:
-- Calculus essay due in 5 days, needs 6 hours of work.
-- Physics problem set due July 15."
+              placeholder="Paste project briefs, syllabus segments, task list, or type something like:
+- Client feedback and deck revisions due Friday, estimate 4 hours.
+- Calculus exam prep or marketing kickoff plan due July 15."
               className="w-full min-h-[140px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 border border-neutral-800/60 focus:border-amber-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
               disabled={isProcessing}
             />
@@ -197,7 +211,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
               <div className="flex items-center gap-2">
                 <Upload className="w-4 h-4 shrink-0 text-neutral-400" />
                 <span className="font-sans text-[11px] font-medium truncate">
-                  {dragActive ? "Drop files here!" : "Drag syllabus PDF / Image or click"}
+                  {dragActive ? "Drop files here!" : "Drag project document / screenshot or click"}
                 </span>
               </div>
             </div>

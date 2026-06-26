@@ -546,6 +546,175 @@ What is your immediate focus goal?`;
   }
 });
 
+// Helper function to mock parse voice transcripts in Hinglish/English/Hindi
+const mockParseVoiceTask = (transcript: string) => {
+  const lower = transcript.toLowerCase();
+  
+  // Set defaults
+  let title = "Voice Task";
+  let description = `Created from voice transcript: "${transcript}"`;
+  let category = "Work";
+  let priority: "low" | "medium" | "high" | "critical" = "medium";
+  let estimatedHours = 2;
+  
+  // Calculate relative dates (Today reference is June 23, 2026)
+  const today = new Date(2026, 5, 23); // June 23, 2026
+  let deadlineDate = new Date(today);
+  deadlineDate.setDate(today.getDate() + 3); // Default 3 days
+
+  if (lower.includes("tomorrow") || lower.includes("kal") || lower.includes("parso") || lower.includes("agli subah")) {
+    deadlineDate = new Date(today);
+    deadlineDate.setDate(today.getDate() + 1);
+  } else if (lower.includes("monday") || lower.includes("somvar")) {
+    const day = today.getDay();
+    const daysToAdd = (8 - day) % 7 || 7;
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  } else if (lower.includes("friday") || lower.includes("shukravar")) {
+    const day = today.getDay();
+    const daysToAdd = (5 - day + 7) % 7 || 7;
+    deadlineDate.setDate(today.getDate() + daysToAdd);
+  }
+
+  // Keywords logic
+  if (lower.includes("exam") || lower.includes("pariksha") || lower.includes("test") || lower.includes("quiz") || lower.includes("padhna")) {
+    title = "Exam Preparation Study Block";
+    category = "Academics";
+    priority = "high";
+    estimatedHours = 3;
+  } else if (lower.includes("meeting") || lower.includes("client") || lower.includes("baithak") || lower.includes("call")) {
+    title = "Client Sync & Review Meeting";
+    category = "Work";
+    priority = "medium";
+    estimatedHours = 1.5;
+  } else if (lower.includes("launch") || lower.includes("campaign") || lower.includes("product") || lower.includes("start")) {
+    title = "Marketing Campaign Launch Preparation";
+    category = "Launch";
+    priority = "critical";
+    estimatedHours = 5;
+  } else if (lower.includes("project") || lower.includes("karya") || lower.includes("assignment") || lower.includes("subtasks")) {
+    title = "Project Milestones Deliverables";
+    category = "Project";
+    priority = "high";
+    estimatedHours = 4;
+  }
+
+  // Try to clean up name from transcript if possible
+  const matchWith = lower.match(/(?:meeting with|project on|exam for|preparation of|prep for|task for) ([a-zA-Z0-9\s]{3,30})/);
+  if (matchWith && matchWith[1]) {
+    const capitalized = matchWith[1].split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    title = capitalized;
+  }
+
+  return {
+    title,
+    description: `Voice-registered task details: "${transcript}" (Transferred into English Task Model)`,
+    category,
+    priority,
+    estimatedHours,
+    deadline: deadlineDate.toISOString().split('T')[0],
+    subtasks: [
+      { title: "Review requirements and draft initial roadmap", estimatedMinutes: 45 },
+      { title: "Execute core task segments & content draft", estimatedMinutes: 90 },
+      { title: "Final quality checks, reviews and submission", estimatedMinutes: 30 }
+    ]
+  };
+};
+
+// API Route: Transcribe, translate, and parse voice task inputs
+app.post("/api/gemini/voice-task", async (req, res) => {
+  try {
+    const { transcript } = req.body;
+    if (!transcript) {
+      return res.status(400).json({ success: false, error: "Transcript is required" });
+    }
+
+    const ai = getGeminiClient();
+    
+    // Fallback if no Gemini client is configured
+    if (!ai) {
+      console.log("[Voice Task] No API key, running mock translator & parser");
+      const parsed = mockParseVoiceTask(transcript);
+      return res.json({
+        success: true,
+        task: parsed,
+        mode: "mock"
+      });
+    }
+
+    const todayDateInfo = "Tuesday, June 23, 2026";
+    const parsePrompt = `
+      You are 'The Last-Minute Life Saver' AI Voice Assistant.
+      You will receive a voice transcript of a user describing a task they want to add to their calendar.
+      The user might speak in English, Hindi, or a mix of both (Hinglish) in an Indian speaking style. 
+      E.g., 'yaar kal exam hai physics ka, revision karna hai subah 9 baje' or 'we need to launch the marketing campaign on next Friday, add subtasks for design, content and emails, should take around 6 hours'.
+
+      Your job is to:
+      1. Translate any Hindi, Hinglish, or Indian slang parts into clean, professional, or academic English.
+      2. Parse the transcript to extract the following fields for a Task:
+         - title: A concise, highly clear English task title suitable for a student, professional, or entrepreneur (e.g. 'Physics Exam Revision' or 'Marketing Campaign Launch').
+         - description: A brief explanation of the task in English.
+         - category: Choose the most fitting category out of: 'Academics', 'Project', 'Launch', 'Work', 'Personal'.
+         - priority: Choose one of: 'low' | 'medium' | 'high' | 'critical'.
+         - estimatedHours: A number representing total hours (default to 2 if not stated).
+         - deadline: An ISO Date String (YYYY-MM-DD). Calculate this relative to current date: ${todayDateInfo}. E.g., 'tomorrow' or 'kal' is 2026-06-24, 'Monday' or 'somvar' is the next Monday (2026-06-29), etc. If no deadline is specified, default to 3 days from today (2026-06-26).
+         - subtasks: A list of 3-5 logical, smaller, sequential steps (subtasks) in English to complete the main task, each with an estimatedMinutes (number, typically 30-120 mins).
+
+      User's Voice Transcript: "${transcript}"
+    `;
+
+    console.log(`[Voice Task] Transcribing and parsing: "${transcript}"`);
+    const response = await generateContentWithFallback(ai, {
+      model: "gemini-3.5-flash",
+      contents: { parts: [{ text: parsePrompt }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            category: { type: Type.STRING },
+            priority: { type: Type.STRING, enum: ["low", "medium", "high", "critical"] },
+            estimatedHours: { type: Type.NUMBER },
+            deadline: { type: Type.STRING },
+            subtasks: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  estimatedMinutes: { type: Type.INTEGER }
+                },
+                required: ["title", "estimatedMinutes"]
+              }
+            }
+          },
+          required: ["title", "description", "category", "priority", "estimatedHours", "deadline", "subtasks"]
+        }
+      }
+    });
+
+    const responseText = response.text;
+    const parsed = JSON.parse(responseText);
+
+    return res.json({
+      success: true,
+      task: parsed,
+      mode: "live"
+    });
+
+  } catch (err: any) {
+    console.error("[Voice Task Error]", err);
+    const parsedFallback = mockParseVoiceTask(req.body.transcript || "");
+    return res.json({
+      success: true,
+      task: parsedFallback,
+      mode: "fallback",
+      error: err.message || String(err)
+    });
+  }
+});
+
 // Configure Vite as Middleware in non-production mode, serving files statically in production
 const startServer = async () => {
   if (process.env.NODE_ENV !== "production") {

@@ -18,7 +18,7 @@ let googleProviderInstance: GoogleAuthProvider | undefined;
 let firebaseError: string | null = null;
 
 if (!firebaseConfig.apiKey) {
-  firebaseError = "Firebase API Key is missing. Please make sure to add VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_APP_ID to your Vercel environment variables.";
+  firebaseError = "Firebase API Key is missing. Please make sure to add VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_APP_ID to your Vercel environment variables or AI Studio Settings.";
 } else {
   try {
     appInstance = initializeApp(firebaseConfig);

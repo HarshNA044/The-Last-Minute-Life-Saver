@@ -160,10 +160,7 @@ export default function App() {
   });
   const initialLoadCompleted = useRef<boolean>(false);
 
-  const [autopilot, setAutopilot] = useState<boolean>(() => {
-    const saved = localStorage.getItem('life_saver_autopilot');
-    return saved ? JSON.parse(saved) : true;
-  });
+  const [autopilot, setAutopilot] = useState<boolean>(true);
 
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('life_saver_tasks');
@@ -259,7 +256,7 @@ export default function App() {
         const data = docSnap.data();
         if (data.tasks) setTasks(data.tasks);
         if (data.blocks) setBlocks(data.blocks);
-        if (data.autopilot !== undefined) setAutopilot(data.autopilot);
+        setAutopilot(true);
         addSystemLog("Workspace synced perfectly with Google Cloud.", "info");
       } else {
         // First login/registration or fresh start: save defaults
@@ -492,7 +489,7 @@ export default function App() {
   // Core Scheduling Algorithm: Scans vacant blocks and maps focus sessions
   const autoScheduleBlocks = useCallback((activeTasks: Task[] = tasks) => {
     setIsProcessing(true);
-    setStatusText("Autopilot scanner seeking study gaps... ⚙️");
+    setStatusText("Autopilot scanner seeking focus gaps... ⚙️");
     addSystemLog("Initiated proactive agenda slot scanning procedures.", "optimizing");
 
     // Filter out previous focus sessions so we can re-optimize cleanly
@@ -573,7 +570,7 @@ export default function App() {
     setBlocks([...solidReservedBlocks, ...proposedFocusBlocks]);
     setIsProcessing(false);
     setStatusText(`Successfully optimized calendar! Slotted ${scheduledCount} critical focus sessions.`);
-    addSystemLog(`Autopilot optimized: arranged ${scheduledCount} study intervals.`, 'scheduled');
+    addSystemLog(`Autopilot optimized: arranged ${scheduledCount} focus intervals.`, 'scheduled');
   }, [blocks, addSystemLog]);
 
   // Toggle checklist subtask complete

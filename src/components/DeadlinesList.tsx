@@ -19,7 +19,10 @@ import {
   Layers,
   XCircle,
   TrendingUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Mic,
+  MicOff,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, TaskPriority, TaskStatus, SubTask } from '../types';
@@ -61,8 +64,119 @@ export default function DeadlinesList({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [hours, setHours] = useState(3);
   const [deadline, setDeadline] = useState("2026-06-25");
-  const [category, setCategory] = useState("Academics");
+  const [category, setCategory] = useState("Work");
   const [rawSubtasks, setRawSubtasks] = useState("Draft first outline\nComplete implementation tests");
+
+  // Voice input states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN'); // Default to Indian English/Hinglish, support Hindi
+
+  const processVoiceTask = async (text: string) => {
+    if (!text.trim()) return;
+    setIsProcessingVoice(true);
+    setVoiceError(null);
+    try {
+      const response = await fetch("/api/gemini/voice-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text })
+      });
+      const data = await response.json();
+      if (data.success && data.task) {
+        setTitle(data.task.title || "");
+        setDescription(data.task.description || "");
+        setCategory(data.task.category || "Work");
+        setPriority(data.task.priority || "medium");
+        setHours(Number(data.task.estimatedHours) || 2);
+        setDeadline(data.task.deadline || "2026-06-25");
+        
+        if (data.task.subtasks && Array.isArray(data.task.subtasks)) {
+          const rawSubText = data.task.subtasks
+            .map((s: any) => s.title)
+            .join("\n");
+          setRawSubtasks(rawSubText);
+        }
+      } else {
+        setVoiceError("Failed to parse your voice. Please try again with clear words.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setVoiceError("Connection issue while parsing voice task.");
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  const startListening = () => {
+    setVoiceError(null);
+    setVoiceTranscript("");
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceError("Microphone speech recognition is not supported in this browser. Try Google Chrome.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = voiceLanguage; 
+
+      let recognitionActive = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event);
+        if (event.error === 'no-speech') {
+          setVoiceError("No speech detected. Please speak near your microphone.");
+        } else {
+          setVoiceError(`Speech recognition error: ${event.error || "failed"}`);
+        }
+        setIsListening(false);
+        recognitionActive = false;
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionActive = false;
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        
+        setVoiceTranscript(transcript);
+
+        if (event.results[0].isFinal) {
+          recognition.stop();
+          processVoiceTask(transcript);
+        }
+      };
+
+      recognition.start();
+
+      // Fallback timeout
+      setTimeout(() => {
+        if (recognitionActive) {
+          recognition.stop();
+        }
+      }, 12000);
+
+    } catch (e: any) {
+      console.error(e);
+      setVoiceError("Microphone permission denied or initialization failed.");
+      setIsListening(false);
+    }
+  };
 
   // Normalized date parser helper
   const getNormalizedDate = (dateStr: string): string => {
@@ -369,8 +483,88 @@ export default function DeadlinesList({
           >
             <h3 className="text-xs font-mono font-semibold text-neutral-400 uppercase tracking-widest flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Schedule New Assignment Milestone
+              Schedule New Milestone / Deliverable
             </h3>
+
+            {/* Elegant Voice Helper Panel */}
+            <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden" id="voice-quick-add-panel">
+              <div className="flex items-start gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={startListening}
+                  disabled={isListening || isProcessingVoice}
+                  className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center transition-all duration-300 shadow-md ${
+                    isListening 
+                      ? "bg-rose-500 text-white animate-pulse shadow-rose-500/30 scale-105" 
+                      : isProcessingVoice 
+                        ? "bg-amber-500 text-neutral-950" 
+                        : "bg-neutral-950 border border-neutral-800 text-amber-500 hover:text-amber-400 hover:border-amber-500/30"
+                  }`}
+                  title="Speak to add task"
+                >
+                  {isProcessingVoice ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : isListening ? (
+                    <MicOff className="w-5 h-5 animate-pulse" />
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
+                </button>
+                <div className="space-y-1 flex-1 min-w-0">
+                  <h4 className="text-xs font-mono font-medium text-neutral-200 uppercase tracking-wide flex items-center flex-wrap gap-1.5">
+                    🎙️ Voice Auto-Fill Assistant
+                    {isListening && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-500/10 text-rose-400 text-[9px] rounded font-mono animate-pulse">
+                        Listening...
+                      </span>
+                    )}
+                    {isProcessingVoice && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] rounded font-mono">
+                        AI Formatting...
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-sans max-w-lg break-words">
+                    {voiceTranscript ? (
+                      <span className="text-amber-400 italic font-medium">"{voiceTranscript}"</span>
+                    ) : (
+                      "Speak in English, Hindi, or Hinglish to automatically fill this form. e.g. \"yaar monday ko project deliverable submit karna hai, research aur draft subtasks include kar do\""
+                    )}
+                  </p>
+                  {voiceError && (
+                    <p className="text-[10px] text-rose-400 font-mono flex items-center gap-1">
+                      ⚠️ {voiceError}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Language Selection Toggle */}
+              <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-850 shrink-0 self-end md:self-center">
+                <button
+                  type="button"
+                  onClick={() => setVoiceLanguage('en-IN')}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
+                    voiceLanguage === 'en-IN' 
+                      ? "bg-neutral-800 text-amber-400 font-medium" 
+                      : "text-neutral-500 hover:text-neutral-300"
+                  }`}
+                >
+                  🇮🇳 Hinglish / Eng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVoiceLanguage('hi-IN')}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer ${
+                    voiceLanguage === 'hi-IN' 
+                      ? "bg-neutral-800 text-amber-400 font-medium" 
+                      : "text-neutral-500 hover:text-neutral-300"
+                  }`}
+                >
+                  🇮🇳 Hindi
+                </button>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -378,7 +572,7 @@ export default function DeadlinesList({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Chemistry Homework, Physics Quiz"
+                  placeholder="e.g. Client Deck, Project Launch, Study Prep, Presentation"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
@@ -397,10 +591,10 @@ export default function DeadlinesList({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Subject Area / Category</label>
+                <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Category / Area</label>
                 <input
                   type="text"
-                  placeholder="e.g. Academics, Personal"
+                  placeholder="e.g. Work, Academics, Launch, Personal"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
@@ -436,7 +630,7 @@ export default function DeadlinesList({
               <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Short Description</label>
               <input
                 type="text"
-                placeholder="Key assignment outcomes or study goals..."
+                placeholder="Key assignment, deliverable outcomes, or study goals..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700"
@@ -450,7 +644,7 @@ export default function DeadlinesList({
               <textarea
                 value={rawSubtasks}
                 onChange={(e) => setRawSubtasks(e.target.value)}
-                placeholder="Step 1: Read materials&#10;Step 2: Draft answers"
+                placeholder="Step 1: Review project brief or study materials&#10;Step 2: Draft initial outline or structure&#10;Step 3: Complete execution & review"
                 rows={3}
                 className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-mono"
               />

@@ -50,9 +50,9 @@ export default function ChatAssistant({
     {
       id: "welcome",
       role: "assistant",
-      text: "Hey! I am **The Last-Minute Life Saver**. Drop a syllabus, describe your upcoming due dates, or click below to let me scan and autonomously optimize your calendar gaps. Procrastination stops today!",
+      text: "Hey! I am **The Last-Minute Life Saver**. Drop a task list, project brief, or syllabus, describe your upcoming due dates, or click below to let me scan and autonomously optimize your calendar gaps. Procrastination stops today!",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestions: ["Lock in Study Sessions", "Am I in danger?", "Help me schedule CS lab"]
+      suggestions: ["Lock in Work Sessions", "Am I behind?", "Help me schedule deliverables"]
     }
   ]);
   const [inputText, setInputText] = useState("");

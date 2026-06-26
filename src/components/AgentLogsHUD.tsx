@@ -41,7 +41,7 @@ export default function AgentLogsHUD({ logs, onClearLogs, statusText }: AgentLog
         {logs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-center">
             <p className="font-mono text-[10px] text-neutral-600">
-              No recent activity. Import a syllabus or click "Optimize Now" to populate.
+              No recent activity. Import a task brief or click "Optimize Now" to populate.
             </p>
           </div>
         ) : (
