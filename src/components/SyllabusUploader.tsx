@@ -158,7 +158,17 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
         }),
       });
 
-      if (!response.ok) throw new Error("Server extraction pipeline error");
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error("Syllabus payload is too large for the server. Try pasting a shorter chunk or typing details directly to parse!");
+        }
+        let errorDetail = "";
+        try {
+          const errJson = await response.json();
+          errorDetail = errJson.message || errJson.error || "";
+        } catch (_) {}
+        throw new Error(`Server extraction pipeline error (Status: ${response.status}${errorDetail ? ` - ${errorDetail}` : ""}). Try parsing smaller text portions or open the app in a new tab to bypass iframe restrictions.`);
+      }
 
       const resData = await response.json();
       if (resData.success) {

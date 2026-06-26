@@ -135,7 +135,9 @@ app.post("/api/auth/send-otp", async (req, res) => {
 
 // Helper function to mock parse syllabus or text prompts with relative date matching
 const mockParseSyllabusText = (textContent: string, clientDate?: string) => {
-  const refDateStr = clientDate || new Date().toISOString().split('T')[0];
+  const refDateStr = (typeof clientDate === 'string' && clientDate) 
+    ? clientDate 
+    : new Date().toISOString().split('T')[0];
   const parts = refDateStr.split('-');
   const today = parts.length === 3 
     ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0) 
@@ -511,8 +513,8 @@ app.post("/api/gemini/analyze", async (req, res) => {
 
   } catch (err: any) {
     console.log(`[Parser] Note: Gracefully activated local syllabus parser fallback. (Reason: ${err.message || err})`);
-    const refDateStr = req.body.clientDate || new Date().toISOString().split('T')[0];
-    const mockTasks = mockParseSyllabusText(req.body.textContent || "", refDateStr);
+    const refDateStr = req.body?.clientDate || new Date().toISOString().split('T')[0];
+    const mockTasks = mockParseSyllabusText(req.body?.textContent || "", refDateStr);
     return res.json({ success: true, tasks: mockTasks, mode: "fallback" });
   }
 });
@@ -632,7 +634,7 @@ What is your immediate focus goal?`;
     let responseText = "";
     let suggestions = ["Start Focus Hour Now", "Let's Re-Optimize", "Explain Study Strategy"];
     
-    const userMsg = (req.body.message || "").toLowerCase();
+    const userMsg = (req.body?.message || "").toLowerCase();
     if (userMsg.includes("overwhelmed") || userMsg.includes("stressed") || userMsg.includes("anxious")) {
       responseText = `Breathe down! **The Last-Minute Life Saver** is fully synchronized.
 
@@ -927,7 +929,7 @@ app.post("/api/gemini/voice-task", async (req, res) => {
 
   } catch (err: any) {
     console.error("[Voice Task Error]", err);
-    const parsedFallback = mockParseVoiceTask(req.body.transcript || "", req.body.clientDate);
+    const parsedFallback = mockParseVoiceTask(req.body?.transcript || "", req.body?.clientDate);
     return res.json({
       success: true,
       task: parsedFallback,
