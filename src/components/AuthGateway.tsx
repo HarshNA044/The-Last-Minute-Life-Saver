@@ -227,7 +227,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <ShieldCheck className="w-6 h-6 animate-pulse" />
           </div>
           <h2 className={titleClass}>
-            {mode === 'login' ? 'Sign In' : 'Create Free Account'}
+            {mode === 'login' ? 'Sign In' : 'Create Account'}
           </h2>
           <p className={descClass}>
             {mode === 'login' 
