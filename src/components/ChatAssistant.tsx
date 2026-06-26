@@ -131,7 +131,7 @@ export default function ChatAssistant({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 flex flex-col h-[480px] shadow-xl relative overflow-hidden" id="chat-assistant-container">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 flex flex-col h-[480px] relative overflow-hidden" id="chat-assistant-container">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3 mb-3">
         <div className="flex items-center gap-2">

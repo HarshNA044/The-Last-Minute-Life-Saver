@@ -78,7 +78,7 @@ export default function CalendarPlanner({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative" id="calendar-planner-container">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 relative" id="calendar-planner-container">
       {/* HUD Stress Meter */}
       <div className="mb-5 p-4 rounded-xl border border-neutral-800/80 bg-neutral-950/40">
         <div className="flex items-center justify-between mb-3">

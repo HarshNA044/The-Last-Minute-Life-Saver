@@ -171,7 +171,7 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 shadow-xl relative overflow-hidden flex flex-col justify-between"
+            className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between"
             id="quick-tips-panel"
           >
             {/* Background glowing aura */}

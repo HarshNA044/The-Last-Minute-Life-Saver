@@ -335,7 +335,7 @@ export default function DeadlinesList({
   const isFiltersActive = filterPriority !== 'all' || filterStatus !== 'all' || filterCategory !== 'all';
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 md:p-6 shadow-xl flex flex-col gap-6" id="calendar-deadlines-container">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 md:p-6 flex flex-col gap-6" id="calendar-deadlines-container">
       
       {/* Title block with Manual creation toggle */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4">

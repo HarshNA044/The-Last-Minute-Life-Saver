@@ -122,7 +122,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden" id="task-uploader-container">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 relative overflow-hidden" id="task-uploader-container">
       {/* Background Accent Grid */}
       <div className="absolute inset-0 bg-radial-gradient from-amber-500/5 to-transparent pointer-events-none opacity-40" />
 

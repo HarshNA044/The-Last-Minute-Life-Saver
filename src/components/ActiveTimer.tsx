@@ -76,7 +76,7 @@ export default function ActiveTimer({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 shadow-xl flex flex-col items-center justify-between h-[480px] relative overflow-hidden" id="focus-timer-section">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 flex flex-col items-center justify-between h-[480px] relative overflow-hidden" id="focus-timer-section">
       {/* Segment Header */}
       <div className="w-full flex items-center justify-between border-b border-neutral-800/60 pb-3 z-10">
         <div className="flex items-center gap-2">

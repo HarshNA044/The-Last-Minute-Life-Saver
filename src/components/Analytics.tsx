@@ -271,7 +271,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
   const isEmptyState = tasks.length === 0;
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 shadow-xl flex flex-col" id="course-analytics-panel">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 flex flex-col" id="course-analytics-panel">
       
       {/* Header with Switch Controllers */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4 mb-5">

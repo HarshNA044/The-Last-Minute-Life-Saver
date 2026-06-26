@@ -1,6 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  
   --color-neutral-950: var(--bg-950);
   --color-neutral-900: var(--bg-900);
   --color-neutral-955: var(--bg-955);
@@ -57,4 +60,28 @@
 .theme-transitioning,
 .theme-transitioning * {
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+html, body {
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes gradient-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-dark {
+  background: linear-gradient(135deg, #0a0a0a, #111827, #0f172a, #1e1b4b, #0a0a0a);
+  background-size: 300% 300%;
+  animation: gradient-move 15s ease infinite;
+}
+
+.animate-gradient-light {
+  background: linear-gradient(135deg, #f8fafc, #e0f2fe, #f1f5f9, #e0e7ff, #f8fafc);
+  background-size: 300% 300%;
+  animation: gradient-move 15s ease infinite;
 }

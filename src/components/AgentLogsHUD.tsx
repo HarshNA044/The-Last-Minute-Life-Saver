@@ -11,7 +11,7 @@ interface AgentLogsHUDProps {
 
 export default function AgentLogsHUD({ logs, onClearLogs, statusText }: AgentLogsHUDProps) {
   return (
-    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 md:p-5 shadow-xl flex flex-col h-[180px]" id="agent-logs-hud-container">
+    <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 md:p-5 flex flex-col h-[180px]" id="agent-logs-hud-container">
       {/* HUD Header */}
       <div className="flex items-center justify-between border-b border-neutral-800/60 pb-2.5 mb-2.5">
         <div className="flex items-center gap-2">

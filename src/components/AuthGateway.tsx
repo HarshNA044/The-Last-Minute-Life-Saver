@@ -172,8 +172,44 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
     }
   };
 
+  const isDark = theme === 'dark';
+  
+  const containerClass = `min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 transition-all duration-150 relative ${
+    isDark ? 'animate-gradient-dark text-neutral-100' : 'animate-gradient-light text-slate-900'
+  }`;
+
+  const cardClass = `w-full max-w-md p-8 rounded-2xl border ${
+    isDark ? 'border-neutral-800 bg-neutral-900/80 text-neutral-100' : 'border-slate-200/80 bg-white/90 text-slate-800'
+  } shadow-xl flex flex-col relative overflow-hidden backdrop-blur-md`;
+
+  const inputClass = `block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-150 ${
+    isDark ? 'border-neutral-800 bg-neutral-950/50 text-neutral-100 placeholder:text-neutral-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400'
+  }`;
+
+  const inputPassClass = `block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-150 ${
+    isDark ? 'border-neutral-800 bg-neutral-950/50 text-neutral-100 placeholder:text-neutral-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400'
+  }`;
+
+  const labelClass = `block text-[10px] font-mono uppercase tracking-wider mb-1.5 ${
+    isDark ? 'text-neutral-400' : 'text-slate-500'
+  }`;
+
+  const titleClass = `text-2xl font-bold tracking-tight ${
+    isDark ? 'text-neutral-100 font-sans' : 'text-slate-900 font-sans'
+  }`;
+
+  const descClass = `mt-2 text-xs font-sans ${
+    isDark ? 'text-neutral-400' : 'text-slate-500'
+  }`;
+
+  const dividerClass = `mt-8 pt-6 border-t flex justify-between items-center text-xs ${
+    isDark ? 'border-neutral-800' : 'border-slate-200'
+  }`;
+
+  const footerSpanClass = isDark ? 'text-neutral-500' : 'text-slate-400';
+
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-150 bg-neutral-950 text-neutral-100">
+    <div className={containerClass}>
       
       {/* Decorative Top Accent Card */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-rose-500 to-sky-500" />
@@ -183,20 +219,21 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md p-8 rounded-2xl border border-neutral-850 shadow-xl flex flex-col relative overflow-hidden bg-neutral-900/90 backdrop-blur-md"
+        className={cardClass}
       >
         {/* Brand Banner Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20 shadow-inner">
             <ShieldCheck className="w-6 h-6 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-bold font-sans tracking-tight text-neutral-100">
-            {mode === 'login' && 'Access Life Saver'}
-            {mode === 'signup' && 'Create Free Account'}
+          <h2 className={titleClass}>
+            {mode === 'login' ? 'Sign In' : 'Create Free Account'}
           </h2>
-          <p className="mt-2 text-xs text-neutral-500 font-mono">
-            {mode === 'login' && 'Synchronize your personal academic workspace'}
-            {mode === 'signup' && 'Secure client-side cloud persistence database'}
+          <p className={descClass}>
+            {mode === 'login' 
+              ? 'Access your workspace on The Last-Minute Life Saver' 
+              : 'Register your account on The Last-Minute Life Saver'
+            }
           </p>
         </div>
 
@@ -231,7 +268,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">Registered Email</label>
+              <label className={labelClass}>Registered Email</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
                   <Mail className="w-4 h-4" />
@@ -242,14 +279,14 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider">Account Password</label>
+                <label className={labelClass}>Account Password</label>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
@@ -261,7 +298,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
+                  className={inputPassClass}
                 />
                 <button
                   type="button"
@@ -276,7 +313,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-950 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
             >
               {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -293,7 +330,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         {mode === 'signup' && (
           <form onSubmit={handleSignupSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">Your Full Name</label>
+              <label className={labelClass}>Your Full Name</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
                   <User className="w-4 h-4" />
@@ -304,13 +341,13 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="John Doe"
-                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">Email Address</label>
+              <label className={labelClass}>Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
                   <Mail className="w-4 h-4" />
@@ -321,13 +358,13 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="block w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">Choose Password</label>
+              <label className={labelClass}>Choose Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
                   <KeyRound className="w-4 h-4" />
@@ -338,7 +375,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
-                  className="block w-full pl-10 pr-10 py-3 rounded-xl border border-neutral-800 bg-neutral-950/50 text-neutral-100 text-xs focus:outline-none focus:border-amber-500/50 transition-all duration-150"
+                  className={inputPassClass}
                 />
                 <button
                   type="button"
@@ -368,8 +405,8 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         )}
 
         {/* Dynamic Mode Switch Footer links */}
-        <div className="mt-8 pt-6 border-t border-neutral-850 flex justify-between items-center text-xs">
-          <span className="text-neutral-500">
+        <div className={dividerClass}>
+          <span className={footerSpanClass}>
             {mode === 'login' ? "Don't have an account?" : "Already registered?"}
           </span>
           <button
