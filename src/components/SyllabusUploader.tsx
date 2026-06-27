@@ -23,33 +23,6 @@ DUE DATES:
 * Homework 3: Partial derivatives, gradients, tangent planes, chain rules - due Wednesday July 8th, 2026. Price: 30 pts.
 * Midterm Exam: Thursday, July 16th, 2026 covers chapters 11-14. Focus on volume integration, polar conversions.
 `
-  },
-  {
-    id: "cs",
-    label: "CS 350 Syllabus: Operating Systems",
-    category: "Computer Science",
-    description: "Complex system design problems, file layout coding labs & core thread deadlock project.",
-    content: `CS 350: Operating Systems
-Fall 2026 Syllabus - Department of Engineering
-
-REQUIRED RELEASES:
-* Lab 1: Thread Scheduling & Locks synchronization. Implement thread sleep, yield, join loops. Due July 4th, 2026 at midnight.
-* Major Project: Design virtual memory memory map file system. Requires custom TLB page replacement algorithms. Due July 20th, 2026 (very heavy load!).
-`
-  },
-  {
-    id: "marketing",
-    label: "Product Launch Brief (Pasted text)",
-    category: "Business",
-    description: "Comprehensive timeline of campaign launches, press release schedules, and marketing deliverables.",
-    content: `Q3 Product Launch Plan
-Owner: Launch Management Office (Fall 2026)
-
-CRITICAL DEADLINES:
-* Kickoff Brief: Finalize slide deck and coordinate investor calendar invitations next Wednesday, July 1st, 2026.
-* Social Media Assets: Create image banners, copy drafts, and coordinate publication approvals due Wednesday July 8th, 2026.
-* Press Release Wire: Release official announcement wire to media outlets, covers core architecture and client pricing - due Thursday, July 16th, 2026.
-`
   }
 ];
 
@@ -93,7 +66,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
     try {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
-      recognition.continuous = true;
+      recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = voiceLanguage; 
 
@@ -126,6 +99,13 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
           .join('');
         
         setPastedText(transcript);
+        
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult && lastResult.isFinal) {
+          try {
+            recognition.stop();
+          } catch (e) {}
+        }
       };
 
       recognition.start();

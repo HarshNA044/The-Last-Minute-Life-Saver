@@ -207,6 +207,8 @@ export default function DeadlinesList({
       recognition.lang = voiceLanguage; 
 
       let recognitionActive = true;
+      let hasProcessed = false;
+      let finalTranscript = "";
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -229,6 +231,12 @@ export default function DeadlinesList({
       recognition.onend = () => {
         setIsListening(false);
         recognitionActive = false;
+        
+        // Fallback: process final transcript if not processed yet on session end
+        if (!hasProcessed && finalTranscript.trim()) {
+          hasProcessed = true;
+          processVoiceTask(finalTranscript);
+        }
       };
 
       recognition.onresult = (event: any) => {
@@ -237,11 +245,18 @@ export default function DeadlinesList({
           .map((result: any) => result.transcript)
           .join('');
         
+        finalTranscript = transcript;
         setVoiceTranscript(transcript);
 
-        if (event.results[0].isFinal) {
-          recognition.stop();
-          processVoiceTask(transcript);
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult && lastResult.isFinal) {
+          if (!hasProcessed && transcript.trim()) {
+            hasProcessed = true;
+            try {
+              recognition.stop();
+            } catch (e) {}
+            processVoiceTask(transcript);
+          }
         }
       };
 
@@ -250,7 +265,9 @@ export default function DeadlinesList({
       // Fallback timeout
       setTimeout(() => {
         if (recognitionActive) {
-          recognition.stop();
+          try {
+            recognition.stop();
+          } catch (e) {}
         }
       }, 12000);
 
