@@ -1,7 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Award, CheckCircle, Volume2, ShieldAlert, Sparkles, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SubTask } from '../types';
+
+function createBrownNoiseBuffer(ctx: AudioContext, duration = 4): AudioBuffer {
+  const bufferSize = duration * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let lastOut = 0.0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    data[i] = (lastOut + (0.02 * white)) / 1.02;
+    lastOut = data[i];
+    data[i] *= 3.5; // Gain compensation
+  }
+  return buffer;
+}
+
+function createPinkNoiseBuffer(ctx: AudioContext, duration = 4): AudioBuffer {
+  const bufferSize = duration * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+    data[i] *= 0.11;
+    b6 = white * 0.115926;
+  }
+  return buffer;
+}
 
 interface ActiveTimerProps {
   activeSubtask?: { taskId: string; sub: SubTask } | null;
@@ -18,6 +52,225 @@ export default function ActiveTimer({
   const [isActive, setIsActive] = useState(false);
   const [completedStreaks, setCompletedStreaks] = useState(2); // Start with 2 completed default
   const [ambientPreset, setAmbientPreset] = useState<'none' | 'lofi' | 'rain' | 'brown'>('none');
+
+  // Web Audio API refs for procedural sound synthesis
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const activeNodesRef = useRef<any[]>([]);
+  const lofiIntervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    const stopAllSounds = () => {
+      if (lofiIntervalRef.current) {
+        clearInterval(lofiIntervalRef.current);
+        lofiIntervalRef.current = null;
+      }
+      activeNodesRef.current.forEach((node) => {
+        try {
+          node.disconnect();
+          node.stop();
+        } catch (e) {
+          // already stopped
+        }
+      });
+      activeNodesRef.current = [];
+    };
+
+    if (ambientPreset === 'none') {
+      stopAllSounds();
+      return;
+    }
+
+    // Initialize/resume context
+    let ctx = audioContextRef.current;
+    if (!ctx) {
+      try {
+        ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = ctx;
+      } catch (err) {
+        console.error("Failed to initialize AudioContext:", err);
+        return;
+      }
+    }
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    stopAllSounds();
+
+    // Set up master gain
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.75, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+
+    if (ambientPreset === 'rain') {
+      // Procedural cozy rain sound: lowpass + highpass filtered pink noise with very gentle amplitude modulation
+      const buffer = createPinkNoiseBuffer(ctx, 4);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      // Soft lowpass filter to remove harsh high static hiss
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(750, ctx.currentTime);
+
+      // Highpass filter to remove any muddy bass hum
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.setValueAtTime(100, ctx.currentTime);
+
+      const modulator = ctx.createOscillator();
+      modulator.type = 'sine';
+      modulator.frequency.setValueAtTime(0.08, ctx.currentTime); // very slow ocean-like wind swell
+
+      const modGain = ctx.createGain();
+      modGain.gain.setValueAtTime(0.18, ctx.currentTime);
+
+      const rainGain = ctx.createGain();
+      rainGain.gain.setValueAtTime(0.65, ctx.currentTime);
+
+      modulator.connect(modGain);
+      modGain.connect(rainGain.gain);
+
+      source.connect(hpf);
+      hpf.connect(filter);
+      filter.connect(rainGain);
+      rainGain.connect(masterGain);
+
+      source.start(0);
+      modulator.start(0);
+
+      activeNodesRef.current.push(source, modulator);
+
+    } else if (ambientPreset === 'brown') {
+      // Warm, deep slow ocean swell rumble brown noise
+      const buffer = createBrownNoiseBuffer(ctx, 4);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(220, ctx.currentTime); // deeper cutoff for maximum soothing rumble
+
+      const modulator = ctx.createOscillator();
+      modulator.type = 'sine';
+      modulator.frequency.setValueAtTime(0.05, ctx.currentTime); // ultra slow wave breath
+
+      const modGain = ctx.createGain();
+      modGain.gain.setValueAtTime(0.15, ctx.currentTime);
+
+      const brownGain = ctx.createGain();
+      brownGain.gain.setValueAtTime(0.7, ctx.currentTime);
+
+      modulator.connect(modGain);
+      modGain.connect(brownGain.gain);
+
+      source.connect(filter);
+      filter.connect(brownGain);
+      brownGain.connect(masterGain);
+
+      source.start(0);
+      modulator.start(0);
+      activeNodesRef.current.push(source, modulator);
+
+    } else if (ambientPreset === 'lofi') {
+      // Procedural soft tape hiss
+      const hissBuffer = createBrownNoiseBuffer(ctx, 4);
+      const hissSource = ctx.createBufferSource();
+      hissSource.buffer = hissBuffer;
+      hissSource.loop = true;
+
+      const hissFilter = ctx.createBiquadFilter();
+      hissFilter.type = 'bandpass';
+      hissFilter.frequency.setValueAtTime(1800, ctx.currentTime);
+      hissFilter.Q.setValueAtTime(0.3, ctx.currentTime);
+
+      const hissGain = ctx.createGain();
+      hissGain.gain.setValueAtTime(0.08, ctx.currentTime);
+
+      hissSource.connect(hissFilter);
+      hissFilter.connect(hissGain);
+      hissGain.connect(masterGain);
+      hissSource.start(0);
+      activeNodesRef.current.push(hissSource);
+
+      // Extremely warm, slow-attack, slow-decay relaxing Rhodes chord progression
+      const chords = [
+        [130.81, 164.81, 196.00, 246.94, 293.66], // Cmaj9 - comforting & safe
+        [110.00, 130.81, 164.81, 196.00, 246.94], // Am9 - reflective & warm
+        [87.31, 220.00, 261.63, 329.63, 392.00],  // Fmaj9 - open & peaceful
+        [98.00, 246.94, 293.66, 329.63, 440.00]   // G6/9 - resolving & clean
+      ];
+      let chordIndex = 0;
+
+      const playChord = () => {
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const notes = chords[chordIndex];
+        chordIndex = (chordIndex + 1) % chords.length;
+
+        // Soft, warm lowpass filter to isolate the sweet mids
+        const chordFilter = ctx.createBiquadFilter();
+        chordFilter.type = 'lowpass';
+        chordFilter.frequency.setValueAtTime(450, now);
+        chordFilter.connect(masterGain);
+
+        notes.forEach((freq, noteIdx) => {
+          if (!ctx) return;
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle'; // triangle is softer and pure
+          osc.frequency.setValueAtTime(freq, now);
+
+          // Subtle detune to mimic analog hardware tape warmth
+          const detune = (Math.random() * 2 - 1) * 4;
+          osc.detune.setValueAtTime(detune, now);
+
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0, now);
+          
+          // Arpeggiated starting times for organic feel
+          const noteDelay = noteIdx * 0.12;
+          
+          // Soft attack, steady warm sustain, and slow soothing decay
+          env.gain.setValueAtTime(0, now + noteDelay);
+          env.gain.linearRampToValueAtTime(0.12, now + noteDelay + 1.8);
+          env.gain.exponentialRampToValueAtTime(0.04, now + noteDelay + 3.8);
+          env.gain.linearRampToValueAtTime(0, now + noteDelay + 5.8);
+
+          osc.connect(env);
+          env.connect(chordFilter);
+          osc.start(now + noteDelay);
+          osc.stop(now + noteDelay + 6.0);
+        });
+      };
+
+      playChord();
+      lofiIntervalRef.current = setInterval(playChord, 6500);
+    }
+
+    return () => {
+      stopAllSounds();
+    };
+  }, [ambientPreset]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (lofiIntervalRef.current) {
+        clearInterval(lofiIntervalRef.current);
+      }
+      activeNodesRef.current.forEach((node) => {
+        try {
+          node.stop();
+        } catch (e) {}
+      });
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (activeSubtask) {
@@ -81,8 +334,8 @@ export default function ActiveTimer({
       <div className="w-full flex items-center justify-between border-b border-neutral-800/60 pb-3 z-10">
         <div className="flex items-center gap-2">
           <Timer className="w-4 h-4 text-purple-500 animate-pulse" />
-          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
-            Study Session Timer
+          <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-neutral-200">
+            Focus Session Timer
           </h3>
         </div>
         <div className="flex items-center gap-1.5 bg-neutral-950/80 border border-neutral-800/40 px-2 py-0.5 rounded-full select-none">
@@ -103,7 +356,7 @@ export default function ActiveTimer({
               className="space-y-1"
             >
               <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-mono rounded-full uppercase tracking-wider">
-                Active Study Block
+                Active Focus Block
               </span>
               <h4 className="font-sans font-bold text-neutral-200 text-sm truncate mt-1 max-w-[240px] mx-auto">
                 {activeSubtask.sub.title}
@@ -194,7 +447,7 @@ export default function ActiveTimer({
                   : 'bg-neutral-950 border-neutral-850 text-neutral-500 hover:text-neutral-400'
               }`}
             >
-              {sound === 'none' ? 'OFF' : sound}
+              {sound === 'none' ? 'OFF' : sound === 'rain' ? '💧 Rain' : sound === 'lofi' ? '🎹 Lo-Fi' : '🌊 Ocean'}
             </button>
           ))}
         </div>

@@ -12,9 +12,9 @@ interface SyllabusUploaderProps {
 const TEMPLATES = [
   {
     id: "calc",
-    label: "Calculus III Syllabus (Pasted text)",
-    category: "Math",
-    description: "Multi-week timeline with quiz deadlines, homework assignments & comprehensive midterms.",
+    label: "Project Brief & Deliverable Plan (Pasted text)",
+    category: "General",
+    description: "Multi-week timeline with client deliverables, project milestones & key deadlines.",
     content: `Math 221 - Calculus III: Multivariable Calculus
 Instructor: Dr. Vance (Fall 2026)
 
@@ -228,12 +228,12 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5 border-b border-neutral-800/60 pb-4 relative z-10">
         <div>
-          <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
+          <h2 className="text-sm font-sans font-bold text-neutral-200 flex items-center gap-1.5 uppercase tracking-wider">
             <FolderOpen className="w-4 h-4 text-purple-500" />
-            Project Brief & Syllabus Importer
+            Project Brief, Syllabus & Agenda Importer
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            Paste project briefs, work deliverables, meeting prompts, or upload files to automatically generate structured milestones.
+            Paste project briefs, agendas, syllabus files, client requirements, or type custom tasks to automatically extract structured milestones.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
             <textarea
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste syllabus segments, project briefs, or type: Client feedback due Friday, estimate 4 hours."
+              placeholder="Paste project briefs, syllabus segments, client requirements, or type: Deliver prototype by Friday, estimate 5 hours."
               className="w-full min-h-[105px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 pr-12 pb-14 border border-neutral-800/60 focus:border-purple-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
               disabled={isProcessing}
             />
@@ -382,7 +382,6 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
                   key={item.id}
                   onClick={() => {
                     setPastedText(item.content);
-                    handleExtractPress(item.content);
                   }}
                   disabled={isProcessing}
                   className="w-full text-left p-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-850 hover:border-neutral-800 transition-all duration-200 group flex gap-3 cursor-pointer"

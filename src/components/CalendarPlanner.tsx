@@ -45,7 +45,7 @@ export default function CalendarPlanner({
   let riskStatus: { label: string; color: string; desc: string; progress: number; technique: string } = {
     label: "Fully Scheduled",
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    desc: "All of your study subtasks have scheduled focus slots on your calendar.",
+    desc: "All of your focus subtasks have scheduled slots on your schedule.",
     progress: 10,
     technique: "🎯 Recommended: Spaced Repetition & Feynman Technique. Review your notes and explain concepts simply to solidify long-term retention."
   };
@@ -54,13 +54,13 @@ export default function CalendarPlanner({
     riskStatus = {
       label: "Action Required",
       color: "text-rose-400 bg-rose-500/10 border-rose-500/20 animate-pulse",
-      desc: "Warning: You have assignments listed, but haven't scheduled any study blocks yet!",
+      desc: "Warning: You have deliverables listed, but haven't scheduled any focus blocks yet!",
       progress: 95,
       technique: "🔥 Recommended: Eat the Frog + Pomodoro. Turn off your phone, pick your most intimidating task, and focus for just 25 minutes to break procrastination inertia!"
     };
   } else if (neededMinutes > scheduledFocusMinutes) {
     riskStatus = {
-      label: "More Study Time Needed",
+      label: "More Focus Time Needed",
       color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
       desc: `You have about ${Math.round(neededMinutes / 60)}h of work, but only ${Math.round(scheduledFocusMinutes / 60)}h scheduled. Click "Optimize Now" below to fill the gaps!`,
       progress: 60,
@@ -70,7 +70,7 @@ export default function CalendarPlanner({
     riskStatus = {
       label: "Schedule Fully Optimized",
       color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-      desc: "You have plenty of study sessions scheduled to cover all your assignments!",
+      desc: "You have plenty of focus sessions scheduled to cover all your tasks!",
       progress: 25,
       technique: "🎯 Recommended: Active Recall. Self-test or write summaries without looking at materials to secure top performance."
     };
@@ -78,7 +78,7 @@ export default function CalendarPlanner({
     riskStatus = {
       label: "Balanced Schedule",
       color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-      desc: "Keep a healthy study-to-break ratio to keep your cognitive battery high.",
+      desc: "Keep a healthy work-to-break ratio to preserve your cognitive battery.",
       progress: 10,
       technique: "🍀 Recommended: Ultradian Rhythms. Work in 90-minute waves and take real breaks (no screens!) to keep your focus battery 100% charged."
     };
@@ -101,8 +101,8 @@ export default function CalendarPlanner({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-rose-500" />
-            <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Study Preparation Status
+            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-neutral-200">
+              Work & Task Preparation Status
             </h3>
           </div>
           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${riskStatus.color}`}>
@@ -171,8 +171,8 @@ export default function CalendarPlanner({
       <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-neutral-800/50">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-emerald-400" />
-          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
-            Your Daily Study Schedule
+          <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-neutral-200">
+            Your Daily Work & Focus Schedule
           </h3>
         </div>
         <div className="flex gap-2">
@@ -293,7 +293,7 @@ export default function CalendarPlanner({
             required
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Add offline math study step..."
+            placeholder="Add offline focus or action item..."
             className="w-full h-8 px-3 rounded-lg bg-neutral-950 border border-neutral-800/70 text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-700"
           />
         </div>
@@ -306,7 +306,7 @@ export default function CalendarPlanner({
           >
             <option value="focus">🔥 Focus Work</option>
             <option value="break">☕ Relaxation Break</option>
-            <option value="class">🎓 Active Lecture</option>
+            <option value="class">🎓 Interactive Session</option>
           </select>
         </div>
 

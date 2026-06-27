@@ -577,9 +577,9 @@ export default function DeadlinesList({
       {/* Title block with Manual creation toggle */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4">
         <div>
-          <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
+          <h2 className="text-sm font-sans font-bold text-neutral-200 flex items-center gap-1.5 uppercase tracking-wider">
             <CheckCircle2 className="w-4 h-4 text-purple-500" />
-            Syllabus Calendar & Assignment Board
+            Agenda Calendar & Deliverable Board
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
             Visualize your workloads daywise and monthwise. Check off subtasks and monitor real-time completion.
@@ -749,7 +749,7 @@ export default function DeadlinesList({
               <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">Short Description</label>
               <input
                 type="text"
-                placeholder="Key assignment, deliverable outcomes, or study goals..."
+                placeholder="Key task, deliverable outcomes, or project goals..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700"
@@ -1197,7 +1197,7 @@ export default function DeadlinesList({
             <div className="flex items-center gap-1.5 text-neutral-300">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               <h3 className="font-mono text-xs font-semibold uppercase tracking-wider">
-                Assignments Due on {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                Tasks & Deliverables Due on {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-neutral-950 rounded-full text-neutral-500">
                 {sortedActiveDayTasks.length} found
@@ -1217,7 +1217,7 @@ export default function DeadlinesList({
                 <CheckCircle2 className="w-8 h-8 text-neutral-700 mx-auto mb-2" />
                 <h4 className="font-sans text-xs text-neutral-400 font-medium">No deadlines mapped on this day.</h4>
                 <p className="text-[10px] text-neutral-500 mt-1 max-w-sm mx-auto pl-4 pr-4">
-                  Everything cleared! Tap on another calendar day or use the &quot;Manually Add Task&quot; drawer above to schedule additional courses.
+                  Everything cleared! Tap on another calendar day or use the &quot;Manually Add Task&quot; drawer above to schedule additional projects.
                 </p>
               </motion.div>
             ) : (
@@ -1338,7 +1338,7 @@ export default function DeadlinesList({
                           >
                             <div className="pt-3.5 space-y-2.5">
                               <h4 className="text-[9px] font-mono uppercase text-neutral-500 tracking-wider mb-2">
-                                Daily Study Tasks Checklist
+                                Daily Action Items Checklist
                               </h4>
                               {task.subtasks.map((sub) => (
                                 <div

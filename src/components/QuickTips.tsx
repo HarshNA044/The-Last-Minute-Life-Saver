@@ -183,20 +183,20 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between"
+            className="bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 border border-purple-500/30 shadow-[0_0_15px_rgba(147,51,234,0.08)] rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between"
             id="quick-tips-panel"
           >
             {/* Background glowing aura */}
-            <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/15 rounded-full blur-2xl pointer-events-none" />
 
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-800/60 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-4 h-4 text-purple-400 shrink-0" />
-                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                <h3 className="font-sans text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-1.5">
                   Time Management Advisor
                   {isDynamic && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/15 border border-purple-500/25 rounded-md text-[9px] font-mono text-purple-400 font-normal uppercase animate-pulse">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded-md text-[9px] font-mono text-purple-300 font-normal uppercase animate-pulse">
                       <Sparkles className="w-2.5 h-2.5" />
                       Smart Sync
                     </span>

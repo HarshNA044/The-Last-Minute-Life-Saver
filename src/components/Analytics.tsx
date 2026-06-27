@@ -288,9 +288,9 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
       {/* Header with Switch Controllers */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4 mb-5">
         <div>
-          <h2 className="text-sm font-mono font-medium text-neutral-300 flex items-center gap-1.5 uppercase tracking-wider">
+          <h2 className="text-sm font-sans font-bold text-neutral-200 flex items-center gap-1.5 uppercase tracking-wider">
             <TrendingUp className="w-4 h-4 text-purple-500" />
-            Course Progress & Productivity Trends
+            Project Progress & Productivity Trends
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
             Daywise and monthwise molecular subtask completion ratios and trends.
@@ -359,7 +359,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
                 Adaptive Analytics Engine
               </h3>
               <p>
-                We parse your syllabus files or project briefs, extract scheduled deliverables, and track completion indices dynamically.
+                We parse your project briefs, agendas, or syllabus files, extract scheduled deliverables, and track completion indices dynamically.
               </p>
               <ul className="list-disc list-inside space-y-1 pl-1">
                 <li><span className="text-purple-400 font-medium">Completed Area</span>: Volume of checklist actions completed.</li>
@@ -447,7 +447,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-cyan-500" />
-                Select Academic Month
+                Select Target Month
               </span>
               
               <div className="flex items-center justify-between gap-2 bg-neutral-900/60 p-2 rounded-lg border border-neutral-850">

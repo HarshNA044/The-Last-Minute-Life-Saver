@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Radio, Activity, Zap, Sparkles, Sun, Moon, LogOut, ChevronDown } from 'lucide-react';
+import { Shield, Radio, Activity, Zap, Sparkles, Sun, Moon, LogOut, ChevronDown, Bell, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
@@ -12,9 +12,23 @@ interface HeaderProps {
   user: any;
   onLogin: () => void;
   onLogout: () => void;
+  notificationPermission?: 'default' | 'granted' | 'denied';
+  onRequestNotificationPermission?: () => void;
 }
 
-export default function Header({ autopilot, setAutopilot, statusText, isProcessing, theme, onToggleTheme, user, onLogin, onLogout }: HeaderProps) {
+export default function Header({ 
+  autopilot, 
+  setAutopilot, 
+  statusText, 
+  isProcessing, 
+  theme, 
+  onToggleTheme, 
+  user, 
+  onLogin, 
+  onLogout,
+  notificationPermission = 'default',
+  onRequestNotificationPermission
+}: HeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const isDark = theme === 'dark';
 
@@ -84,8 +98,8 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
             <span className="text-[7px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-[0.22em] sm:tracking-[0.28em] uppercase mb-0.5 sm:mb-1 leading-none">
               THE
             </span>
-            <h1 className="text-sm sm:text-xl font-black tracking-wider text-slate-800 dark:text-slate-100 leading-none font-sans">
-              <span className="mr-1 font-black text-neutral-800 dark:text-neutral-300">LAST</span><span className="bg-gradient-to-r from-purple-600 to-cyan-500 dark:from-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">MINUTE</span>
+            <h1 className={`text-sm sm:text-xl font-black tracking-wider leading-none font-sans ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              <span className={`mr-1 font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>LAST</span><span className="bg-gradient-to-r from-purple-600 to-cyan-500 dark:from-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">MINUTE</span>
             </h1>
             <p className="text-[7px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-[0.22em] sm:tracking-[0.28em] uppercase mt-1 sm:mt-1.5 leading-none">
               LIFE SAVER
@@ -127,6 +141,74 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
             {statusText}
           </span>
         </motion.div>
+
+        {/* Dynamic Device Notification Bell Button */}
+        <AnimatePresence mode="wait">
+          {notificationPermission === 'granted' ? (
+            <motion.button
+              key="granted-bell"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={onRequestNotificationPermission}
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm shrink-0 ${
+                isDark
+                  ? 'bg-purple-500/10 border-purple-500/40 text-purple-400 hover:text-purple-300 hover:border-purple-500/60 hover:shadow-md hover:shadow-purple-500/10'
+                  : 'bg-purple-50 border-purple-300 text-purple-700 hover:text-purple-800 hover:shadow-md hover:shadow-purple-500/5'
+              }`}
+              title="24h Deadline reminders are ACTIVE. Click to test focus chime!"
+              aria-label="Deadline reminders active"
+              id="notification-bell-granted"
+            >
+              <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-500 dark:text-purple-400 stroke-[2.2]" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-neutral-950 animate-pulse" />
+            </motion.button>
+          ) : notificationPermission === 'denied' ? (
+            <motion.button
+              key="denied-bell"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={() => {
+                alert("Notification permission is blocked. Please open browser settings, reset permissions for this page, and click the notification button to enable reminders!");
+              }}
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm shrink-0 bg-neutral-900 border-neutral-800 text-neutral-600"
+              title="24h Reminders are blocked. Reset browser permission to enable."
+              aria-label="Reminders blocked"
+              id="notification-bell-denied"
+            >
+              <BellOff className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2] text-neutral-600" />
+            </motion.button>
+          ) : (
+            <motion.button
+              key="default-bell"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={onRequestNotificationPermission}
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm shrink-0 ${
+                isDark
+                  ? 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-purple-400 hover:border-purple-500/40'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-purple-600 hover:border-purple-300'
+              }`}
+              title="Click to enable 24h deadline notifications on this device!"
+              aria-label="Enable deadline reminders"
+              id="notification-bell-default"
+            >
+              <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2] text-neutral-400 dark:text-neutral-500" />
+              <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-white dark:ring-neutral-950 animate-ping" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Improved Theme Toggle Button (Circular with tactile feedback) */}
         <motion.button

@@ -234,7 +234,7 @@ export default function ChatAssistant({
       {/* 1. CLOSED FLOATING STATE (ActionButton + SpeechBubble) */}
       <AnimatePresence>
         {!isOpen && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 pointer-events-none" id="floating-chat-trigger-container">
+          <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100] flex items-center gap-3 pointer-events-none" id="floating-chat-trigger-container">
             {/* Encouraging text bubble */}
             {showSpeechBubble && (
               <motion.div
@@ -243,14 +243,14 @@ export default function ChatAssistant({
                 exit={{ opacity: 0, x: 10, scale: 0.95 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
                 key={activePromptIndex}
-                className="bg-neutral-900/95 backdrop-blur-md border border-neutral-800 text-purple-400 font-sans text-xs pl-4 pr-2.5 py-2.5 rounded-xl shadow-2xl pointer-events-auto flex items-center gap-2 select-none relative"
+                className="bg-neutral-900/95 backdrop-blur-md border border-neutral-800 text-purple-400 font-sans text-[10px] sm:text-xs pl-3 sm:pl-4 pr-1.5 sm:pr-2.5 py-1.5 sm:py-2.5 rounded-xl shadow-2xl pointer-events-auto flex items-center gap-1.5 sm:gap-2 select-none relative max-w-[200px] sm:max-w-xs"
               >
                 <div 
-                  className="flex items-center gap-2 cursor-pointer hover:text-purple-300 mr-1" 
+                  className="flex items-center gap-1.5 sm:gap-2 cursor-pointer hover:text-purple-300 mr-1" 
                   onClick={() => setIsOpen(true)}
                 >
                   <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse shrink-0" />
-                  <span className="font-medium tracking-tight">{ENCOURAGING_PROMPTS[activePromptIndex]}</span>
+                  <span className="font-medium tracking-tight leading-snug">{ENCOURAGING_PROMPTS[activePromptIndex]}</span>
                 </div>
                 <button
                   type="button"
@@ -287,7 +287,7 @@ export default function ChatAssistant({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed bottom-6 right-6 w-[380px] h-[520px] max-w-[calc(100vw-2rem)] z-50 bg-neutral-900/95 backdrop-blur-md border border-neutral-800/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-[380px] h-[520px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] sm:max-h-[600px] z-[100] bg-neutral-900/95 backdrop-blur-md border border-neutral-800/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto"
             id="chat-assistant-container"
           >
             {/* Header */}
