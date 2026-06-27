@@ -7,7 +7,7 @@ import ChatAssistant from './components/ChatAssistant';
 import ActiveTimer from './components/ActiveTimer';
 import QuickTips from './components/QuickTips';
 import Analytics from './components/Analytics';
-import { Task, CalendarBlock, AgentLog, SubTask } from './types';
+import { Task, CalendarBlock, AgentLog, SubTask, TaskPriority } from './types';
 import { ShieldCheck, HelpCircle, Activity, Sparkles, AlertOctagon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -793,15 +793,24 @@ export default function App() {
     // Filter out previous focus sessions so we can re-optimize cleanly
     const solidReservedBlocks = blocks.filter(b => b.type !== 'focus');
 
-    // Gather all incomplete subtasks from our active assignments
-    const uncompletedSubtasks: { taskId: string; taskTitle: string; sub: SubTask }[] = [];
+    // Gather all incomplete subtasks from our active assignments along with priority and deadline info
+    const uncompletedSubtasks: { 
+      taskId: string; 
+      taskTitle: string; 
+      sub: SubTask;
+      priority: TaskPriority;
+      originalDeadline: string;
+    }[] = [];
+
     activeTasks.forEach((t) => {
       t.subtasks.forEach((st) => {
         if (!st.completed) {
           uncompletedSubtasks.push({
             taskId: t.id,
             taskTitle: t.title,
-            sub: st
+            sub: st,
+            priority: t.priority || 'medium',
+            originalDeadline: t.originalDeadline || '2026-12-31'
           });
         }
       });
@@ -814,12 +823,45 @@ export default function App() {
       return;
     }
 
-    // Available target hours for study (e.g. 8:00 AM, 13:00 PM, 14:00 PM, up to 21:00 PM)
+    // Sort uncompleted subtasks by priority first (critical > high > medium > low), and deadline second (earliest first)
+    const priorityWeight: Record<TaskPriority, number> = {
+      critical: 4,
+      high: 3,
+      medium: 2,
+      low: 1
+    };
+
+    uncompletedSubtasks.sort((a, b) => {
+      // 1. Sort by Priority (higher weight first)
+      const weightA = priorityWeight[a.priority] || 2;
+      const weightB = priorityWeight[b.priority] || 2;
+      if (weightA !== weightB) {
+        return weightB - weightA;
+      }
+
+      // 2. Sort by Deadline (earliest first)
+      const parseDate = (dStr: string) => {
+        const parsed = Date.parse(dStr);
+        if (!isNaN(parsed)) return parsed;
+        
+        // Relative date terms fallback
+        const lower = dStr.toLowerCase();
+        if (lower.includes("today")) return Date.now();
+        if (lower.includes("tomorrow")) return Date.now() + 24 * 3600 * 1000;
+        return Date.now() + 7 * 24 * 3600 * 1000; // Farther out fallback
+      };
+
+      const timeA = parseDate(a.originalDeadline);
+      const timeB = parseDate(b.originalDeadline);
+      return timeA - timeB;
+    });
+
+    // Available target hours for study (from 08:00 AM to 22:00 PM)
     const proposedFocusBlocks: CalendarBlock[] = [];
     let scheduledCount = 0;
 
-    // Start scanning from 13:00 to 22:00
-    let currentHourCursor = 13; 
+    // Start scanning from 08:00 to 22:00
+    let currentHourCursor = 8; 
 
     uncompletedSubtasks.forEach((item) => {
       // Find subsequent available starting hour that has no overlapping class/personal reserved block
@@ -859,7 +901,8 @@ export default function App() {
           completed: false
         });
 
-        addSystemLog(`Mapped slot [${currentHourCursor}:00] to subtask: "${item.sub.title}"`, "scheduled");
+        const priorityLabel = item.priority.toUpperCase();
+        addSystemLog(`Mapped slot [${currentHourCursor}:00] to subtask [${priorityLabel}]: "${item.sub.title}"`, "scheduled");
         currentHourCursor++; // increment cursor for next subtask
         scheduledCount++;
       }
@@ -867,9 +910,9 @@ export default function App() {
 
     setBlocks([...solidReservedBlocks, ...proposedFocusBlocks]);
     setIsProcessing(false);
-    setStatusText(`Successfully optimized calendar! Slotted ${scheduledCount} critical focus sessions.`);
-    addSystemLog(`Autopilot optimized: arranged ${scheduledCount} focus intervals.`, 'scheduled');
-  }, [blocks, addSystemLog, selectedDateStr]);
+    setStatusText(`Successfully optimized calendar! Slotted ${scheduledCount} prioritized critical focus sessions.`);
+    addSystemLog(`Autopilot optimized: arranged ${scheduledCount} priority-ordered focus intervals.`, 'scheduled');
+  }, [blocks, addSystemLog, selectedDateStr, tasks]);
 
   // Toggle checklist subtask complete
   const handleToggleSubtask = (taskId: string, subtaskId: string) => {
