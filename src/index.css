@@ -74,6 +74,15 @@
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@keyframes pulseSlow {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.96); }
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 3s infinite ease-in-out;
+}
+
 html, body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;

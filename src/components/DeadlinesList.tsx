@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   CheckCircle2, 
   ChevronDown, 
@@ -49,6 +49,29 @@ export default function DeadlinesList({
   // Navigation & View Mode states
   const [viewMode, setViewMode] = useState<'daywise' | 'monthwise'>('daywise');
   const setSelectedDateStr = onSelectDate;
+
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (viewMode === 'daywise' && selectedDateStr) {
+      const timer = setTimeout(() => {
+        const activeEl = document.getElementById(`day-btn-${selectedDateStr}`);
+        const container = timelineContainerRef.current;
+        if (activeEl && container) {
+          const containerWidth = container.offsetWidth;
+          const activeWidth = activeEl.offsetWidth;
+          const activeLeft = activeEl.offsetLeft;
+          
+          const targetScrollLeft = activeLeft - (containerWidth / 2) + (activeWidth / 2);
+          container.scrollTo({
+            left: targetScrollLeft,
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedDateStr, viewMode]);
   
   const today = new Date();
   const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
@@ -312,7 +335,7 @@ export default function DeadlinesList({
     const presets = {
       low: "border-neutral-850 text-neutral-400 bg-neutral-950",
       medium: "border-sky-500/20 text-sky-400 bg-sky-500/5",
-      high: "border-amber-500/20 text-amber-400 bg-amber-500/5",
+      high: "border-purple-500/20 text-purple-400 bg-purple-500/5",
       critical: "border-rose-500/30 text-rose-400 bg-rose-500/5 animate-pulse"
     };
     return presets[p] || presets.medium;
@@ -376,8 +399,8 @@ export default function DeadlinesList({
   const getWeekDays = (centerDateStr: string) => {
     const center = new Date(centerDateStr + 'T00:00:00');
     const days = [];
-    // Show 4 days before and 5 days after center (10 day timeline)
-    for (let i = -4; i <= 5; i++) {
+    // Show 10 days starting from the selected center date (making center date the first starting element)
+    for (let i = 0; i <= 9; i++) {
       const d = new Date(center);
       d.setDate(d.getDate() + i);
       const y = d.getFullYear();
@@ -555,7 +578,7 @@ export default function DeadlinesList({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4">
         <div>
           <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <CheckCircle2 className="w-4 h-4 text-amber-500" />
+            <CheckCircle2 className="w-4 h-4 text-purple-500" />
             Syllabus Calendar & Assignment Board
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
@@ -564,7 +587,7 @@ export default function DeadlinesList({
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="text-xs font-sans text-amber-400 hover:text-amber-300 bg-neutral-950 border border-neutral-800 hover:border-amber-500/30 px-3 py-1.5 rounded-xl transition-all duration-150 flex items-center gap-1 cursor-pointer self-start md:self-auto"
+          className="text-xs font-sans text-purple-400 hover:text-purple-300 bg-neutral-950 border border-neutral-800 hover:border-purple-500/30 px-3 py-1.5 rounded-xl transition-all duration-150 flex items-center gap-1 cursor-pointer self-start md:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
           {showAddForm ? "Show Active Calendar" : "Add Task to Calendar"}
@@ -582,7 +605,7 @@ export default function DeadlinesList({
             className="space-y-4 p-4 rounded-xl bg-neutral-950/40 border border-neutral-800/80"
           >
             <h3 className="text-xs font-mono font-semibold text-neutral-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               Schedule New Milestone / Deliverable
             </h3>
 
@@ -596,7 +619,7 @@ export default function DeadlinesList({
                       id="auto-submit-voice"
                       checked={autoSubmitVoice}
                       onChange={(e) => setAutoSubmitVoice(e.target.checked)}
-                      className="w-3 h-3 accent-amber-500 rounded cursor-pointer"
+                      className="w-3 h-3 accent-purple-500 rounded cursor-pointer"
                     />
                     <label htmlFor="auto-submit-voice" className="text-[9px] font-mono text-neutral-500 hover:text-neutral-400 cursor-pointer select-none">
                       🚀 Auto-Schedule Voice
@@ -620,13 +643,13 @@ export default function DeadlinesList({
                       isListening 
                         ? "bg-rose-600 text-white animate-pulse shadow-md shadow-rose-500/25 scale-105 opacity-100" 
                         : isProcessingVoice 
-                          ? "bg-yellow-500 text-neutral-950 font-bold opacity-100 animate-pulse" 
-                          : "bg-amber-500 hover:bg-amber-400 text-neutral-950 opacity-100 font-bold shadow-sm"
+                          ? "bg-purple-500 text-white font-bold opacity-100 animate-pulse" 
+                          : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white opacity-100 font-bold shadow-sm shadow-purple-500/10"
                     }`}
                     title={isListening ? "Stop listening & fill form via AI" : "Speak to auto-fill this form"}
                   >
                     {isProcessingVoice ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-950" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                     ) : isListening ? (
                       <>
                         <MicOff className="w-3.5 h-3.5 animate-pulse opacity-100" />
@@ -634,7 +657,7 @@ export default function DeadlinesList({
                       </>
                     ) : (
                       <>
-                        <Mic className="w-3.5 h-3.5 text-neutral-950 opacity-100 stroke-[2.5]" />
+                        <Mic className="w-3.5 h-3.5 text-white opacity-100 stroke-[2.5]" />
                         <span className="text-[9px] font-mono font-bold opacity-100">Speak</span>
                       </>
                     )}
@@ -654,16 +677,16 @@ export default function DeadlinesList({
                         </span>
                       )}
                       {isProcessingVoice && (
-                        <span className="text-amber-400 font-mono text-[9px] animate-pulse">
+                        <span className="text-purple-400 font-mono text-[9px] animate-pulse">
                           AI auto-parsing...
                         </span>
                       )}
                     </div>
                     {voiceTranscript ? (
-                      <p className="text-amber-400 font-sans italic">"{voiceTranscript}"</p>
+                      <p className="text-purple-400 font-sans italic">"{voiceTranscript}"</p>
                     ) : (
                       <p className="text-neutral-500 font-sans leading-relaxed text-[10px]">
-                        Speak naturally (Hinglish/English). E.g. <span className="text-amber-500/80">"submit project Friday, include 3 subtasks"</span>. We'll instantly extract title, deadline, and sub-steps!
+                        Speak naturally (Hinglish/English). E.g. <span className="text-purple-400/80">"submit project Friday, include 3 subtasks"</span>. We'll instantly extract title, deadline, and sub-steps!
                       </p>
                     )}
                     {voiceError && (
@@ -756,7 +779,7 @@ export default function DeadlinesList({
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-sans bg-amber-500 text-neutral-950 rounded-lg hover:bg-amber-400 font-medium shadow-md transition-colors cursor-pointer"
+                className="px-4 py-1.5 text-xs font-sans bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-lg font-medium shadow-md transition-all cursor-pointer"
               >
                 Schedule Task
               </button>
@@ -776,7 +799,7 @@ export default function DeadlinesList({
                 onClick={() => setViewMode('daywise')}
                 className={`px-4 py-1.5 text-xs font-mono font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   viewMode === 'daywise'
-                    ? 'bg-amber-500 text-neutral-950 shadow-md font-semibold'
+                    ? 'bg-purple-600 text-white shadow-md font-semibold'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
@@ -788,7 +811,7 @@ export default function DeadlinesList({
                 onClick={() => setViewMode('monthwise')}
                 className={`px-4 py-1.5 text-xs font-mono font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   viewMode === 'monthwise'
-                    ? 'bg-amber-500 text-neutral-950 shadow-md font-semibold'
+                    ? 'bg-cyan-600 text-white shadow-md font-semibold'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
@@ -807,7 +830,7 @@ export default function DeadlinesList({
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-2 py-0.5 text-[9px] font-mono rounded border transition-colors cursor-pointer ${
                   showFilters 
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' 
                     : 'bg-neutral-900 border-neutral-850 text-neutral-500 hover:text-neutral-300'
                 }`}
               >
@@ -887,7 +910,7 @@ export default function DeadlinesList({
 
                 {isFiltersActive && (
                   <div className="flex items-center justify-between border-t border-neutral-850 pt-2 text-[10px] font-mono">
-                    <span className="text-amber-500 flex items-center gap-1">
+                    <span className="text-purple-400 flex items-center gap-1">
                       <Filter className="w-3.5 h-3.5" />
                       Active filters are screening calendar dates & completion rates.
                     </span>
@@ -927,7 +950,10 @@ export default function DeadlinesList({
                 </button>
 
                 {/* Horizontal timeline cards container */}
-                <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-800 flex gap-1.5 py-1 scroll-smooth">
+                <div 
+                  ref={timelineContainerRef}
+                  className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-800 flex gap-1.5 py-1 scroll-smooth"
+                >
                   {getWeekDays(selectedDateStr).map((day) => {
                     const isSelected = day.dateStr === selectedDateStr;
                     const stats = getStatsForDate(day.dateStr);
@@ -937,21 +963,22 @@ export default function DeadlinesList({
                     return (
                       <button
                         key={day.dateStr}
+                        id={`day-btn-${day.dateStr}`}
                         type="button"
                         onClick={() => setSelectedDateStr(day.dateStr)}
                         className={`flex-1 min-w-[56px] py-2.5 px-1.5 rounded-xl border flex flex-col items-center justify-between gap-1 transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-amber-500 border-amber-500 text-neutral-950 shadow-md shadow-amber-500/15"
+                            ? "bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-500/15"
                             : "bg-neutral-950 border-neutral-850 text-neutral-400 hover:border-neutral-700/60 hover:bg-neutral-900"
                         }`}
                       >
-                        <span className={`text-[9px] font-mono uppercase tracking-wide ${isSelected ? 'text-neutral-900 font-semibold' : 'text-neutral-500'}`}>
+                        <span className={`text-[9px] font-mono uppercase tracking-wide ${isSelected ? 'text-white font-semibold' : 'text-neutral-500'}`}>
                           {day.dayName}
                         </span>
-                        <span className={`text-sm font-bold font-sans ${isSelected ? 'text-neutral-950' : 'text-neutral-200'}`}>
+                        <span className={`text-sm font-bold font-sans ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
                           {day.dayNum}
                         </span>
-                        <span className={`text-[8px] font-mono tracking-tighter ${isSelected ? 'text-neutral-900' : 'text-neutral-500'}`}>
+                        <span className={`text-[8px] font-mono tracking-tighter ${isSelected ? 'text-white' : 'text-neutral-500'}`}>
                           {day.monthName}
                         </span>
 
@@ -961,10 +988,10 @@ export default function DeadlinesList({
                             isSelected 
                               ? allDone 
                                 ? 'bg-neutral-950 border-neutral-950 text-emerald-400' 
-                                : 'bg-neutral-950 border-neutral-950 text-amber-500'
+                                : 'bg-neutral-950 border-neutral-950 text-purple-400'
                               : allDone
                                 ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                                : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                                : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
                           }`}>
                             {stats.completed}/{stats.total}
                           </span>
@@ -996,7 +1023,7 @@ export default function DeadlinesList({
               {/* Daywise Completion Stats Summary Bar */}
               <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-850 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
                   <span className="font-mono text-xs text-neutral-400">
                     Daywise Completion:
                   </span>
@@ -1012,7 +1039,7 @@ export default function DeadlinesList({
                   </div>
                   <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all duration-300"
                       style={{ width: `${activeDayStats.completionRate}%` }}
                     />
                   </div>
@@ -1027,7 +1054,7 @@ export default function DeadlinesList({
               {/* Header Navigator */}
               <div className="flex items-center justify-between bg-neutral-950 p-3 rounded-xl border border-neutral-850">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-amber-500" />
+                  <Calendar className="w-4 h-4 text-cyan-500" />
                   <span className="text-sm font-bold font-sans text-neutral-200">
                     {new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </span>
@@ -1091,11 +1118,11 @@ export default function DeadlinesList({
                           !cell.isCurrentMonth ? 'opacity-25' : ''
                         } ${
                           isSelected
-                            ? 'bg-amber-500 border-amber-500 text-neutral-950 shadow-sm shadow-amber-500/10'
+                            ? 'bg-cyan-600 border-cyan-600 text-white shadow-sm shadow-cyan-500/10'
                             : 'bg-neutral-900/40 border-neutral-850/60 hover:bg-neutral-900 text-neutral-400 hover:border-neutral-700'
                         }`}
                       >
-                        <span className={`text-[10px] font-bold ${isSelected ? 'text-neutral-950' : 'text-neutral-200'}`}>
+                        <span className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
                           {cell.dayNum}
                         </span>
 
@@ -1104,18 +1131,18 @@ export default function DeadlinesList({
                           {dayFiltered.slice(0, 3).map((t, idxDot) => {
                             let dotColor = 'bg-sky-400';
                             if (t.priority === 'critical') dotColor = 'bg-rose-500';
-                            else if (t.priority === 'high') dotColor = 'bg-amber-500';
+                            else if (t.priority === 'high') dotColor = 'bg-purple-500';
                             else if (t.status === 'completed' || (t.subtasks.length > 0 && t.subtasks.every(st => st.completed))) dotColor = 'bg-emerald-400';
 
                             return (
                               <span 
                                 key={idxDot} 
-                                className={`w-1 h-1 rounded-full ${isSelected ? 'bg-neutral-950' : dotColor}`} 
+                                className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : dotColor}`} 
                               />
                             );
                           })}
                           {dayFiltered.length > 3 && (
-                            <span className={`text-[7px] font-mono leading-none ${isSelected ? 'text-neutral-950' : 'text-neutral-500'}`}>
+                            <span className={`text-[7px] font-mono leading-none ${isSelected ? 'text-white' : 'text-neutral-500'}`}>
                               +
                             </span>
                           )}
@@ -1123,7 +1150,7 @@ export default function DeadlinesList({
 
                         {/* Top corner completion stamp */}
                         {allDone && (
-                          <div className={`absolute top-0.5 right-0.5 rounded-full p-px ${isSelected ? 'text-neutral-950' : 'text-emerald-400'}`}>
+                          <div className={`absolute top-0.5 right-0.5 rounded-full p-px ${isSelected ? 'text-white' : 'text-emerald-400'}`}>
                             <CheckCircle2 className="w-2.5 h-2.5" />
                           </div>
                         )}
@@ -1137,7 +1164,7 @@ export default function DeadlinesList({
               <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-850 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <h4 className="text-xs font-mono text-neutral-400 flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <TrendingUp className="w-4 h-4 text-cyan-400" />
                     Monthwise Progress Summary:
                   </h4>
                   <p className="text-[10px] text-neutral-500 mt-0.5 uppercase tracking-wide">
@@ -1152,7 +1179,7 @@ export default function DeadlinesList({
                   </div>
                   <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-300"
                       style={{ width: `${currentMonthStats.completionRate}%` }}
                     />
                   </div>
@@ -1168,7 +1195,7 @@ export default function DeadlinesList({
         <div className="space-y-3.5">
           <div className="flex items-center justify-between border-t border-neutral-800/40 pt-4" id="selected-day-details-title">
             <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               <h3 className="font-mono text-xs font-semibold uppercase tracking-wider">
                 Assignments Due on {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </h3>
@@ -1326,7 +1353,7 @@ export default function DeadlinesList({
                                       }}
                                       className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                                         sub.completed
-                                          ? "bg-amber-500 border-amber-500 text-neutral-950"
+                                          ? "bg-purple-600 border-purple-600 text-white"
                                           : "border-neutral-800 hover:border-neutral-700 bg-neutral-950"
                                       }`}
                                     >
@@ -1348,7 +1375,7 @@ export default function DeadlinesList({
                                       className={`px-2.5 py-1 text-[10px] rounded-lg font-medium flex items-center gap-1 transition-all ${
                                         sub.completed 
                                           ? "bg-neutral-900 text-neutral-600 cursor-not-allowed" 
-                                          : "bg-amber-500/10 hover:bg-amber-500 hover:text-neutral-950 border border-amber-500/15 text-amber-400 cursor-pointer"
+                                          : "bg-purple-500/10 hover:bg-purple-500 hover:text-white border border-purple-500/15 text-purple-400 cursor-pointer"
                                       }`}
                                     >
                                       <Play className="w-2.5 h-2.5 fill-current" />

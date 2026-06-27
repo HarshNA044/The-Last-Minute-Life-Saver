@@ -536,6 +536,17 @@ app.post("/api/gemini/chat", async (req, res) => {
       3. Proactively point out procrastination habits and encourage immediate Pomodoro deep-focus bursts.
       4. Today's date is: ${todayDateInfo}. Use this dates information to answer with precise context.
       
+      Time Management & Deadline Advice:
+      - ALWAYS incorporate and teach the best techniques for effectively completing tasks without missing deadlines and better time management (such as Pomodoro Technique, Eat the Frog, Feynman Technique, Spaced Repetition, and Time Blocking) in your replies. Use these techniques to actively coach the user on how to succeed without missing deadlines.
+      
+      Subtask Management:
+      - STRICT RULE: Do not automatically append or create any subtasks unless specifically instructed by the user. Keep them empty by default!
+      
+      Task Actions:
+      - If the user explicitly asks to add, create, delete, or remove a task (e.g., "Add a physics homework for tomorrow", "Remove the chemistry assignment"), you MUST return an 'action' block in your JSON response with the appropriate fields.
+      - To add a task, set action.type to 'add_task' and fill the task details.
+      - To delete a task, set action.type to 'delete_task' and provide the taskId or taskTitle (from the current task list).
+      
       User's Active Task List context:
       ${JSON.stringify(currentTasksState || [])}
       
@@ -547,17 +558,20 @@ app.post("/api/gemini/chat", async (req, res) => {
       console.log("No Gemini API key. Generating high-quality proactive mock response.");
       let responseText = "";
       let suggestions = ["Start Focus Hour Now", "Let's Re-Optimize", "Explain Study Strategy"];
+      let action: any = null;
       
       const userMsg = message.toLowerCase();
       if (userMsg.includes("overwhelmed") || userMsg.includes("stressed") || userMsg.includes("anxious")) {
         responseText = `Breathe down! **The Last-Minute Life Saver** is fully synchronized.
+        
+To manage your stress effectively, I recommend the **Eat the Frog First** technique: tackle your most intimidating milestone first while your focus is fresh. Or try the **Pomodoro Power Play** (25 mins on, 5 mins off) to build frictionless momentum.
 
-Looking at your load, you have **2 major items** coming up. Specifically, the **Math 101 Midterm Prep** needs some urgent love within the next 4 days.
+Looking at your load, you have some tasks coming up. Specifically, your highest priority assignment needs some urgent love within the next few days.
 
 Here is the emergency micro-plan:
-1. We will carve out direct **45 minutes** tonight at **7:00 PM** to tackle Chapters 1-2 limits.
+1. We will carve out direct **45 minutes** tonight at **7:00 PM** to tackle the first task.
 2. I have auto-placed a 10-minute break with zero notifications directly after.
-3. You do not need to look at the entire task yet. Just complete *one single sub-task*!
+3. You do not need to look at the entire task yet. Just complete a single task block!
 
 Should I activate Autopilot to lock this block in?`;
         suggestions = ["Activate Autopilot", "No, push to tomorrow", "Show Study Cheat Sheet"];
@@ -567,21 +581,44 @@ Scanning for empty focus gaps between 8:00 AM and 10:00 PM:
 - **Found block:** Wednesday morning gap (09:00 - 11:30)
 - **Found block:** Thursday evening rest phase (19:30 - 21:00)
 
-I have dynamically assigned these to **Computer Science Assignment 2** rotation and balancing algorithms. Completing these milestones now completely sweeps away last-minute panic.
+Using the **Time Blocking** technique, I have dynamically assigned these to your high-priority study blocks. Aligning these focus gaps with your peak energy is the ultimate way to bypass last-minute panic and finish on time!
 
 Shall we lock these into your active agenda calendar?`;
         suggestions = ["Lock in Focus Blocks", "Adjust to Night-Owl Mode", "Set 25-min Timer"];
+      } else if (userMsg.startsWith("add task ") || userMsg.startsWith("create task ")) {
+        const titlePart = message.replace(/^(add task|create task)\s+/i, "").trim();
+        responseText = `Got it! I've added the new task **"${titlePart}"** to your backlog board. No unsolicited subtasks were added, keeping it fully customized to your spoken/typed words. For better time management, try the **Feynman Technique**—explain your core goals simply to master them faster!`;
+        suggestions = ["Optimize Calendar", "Set due date"];
+        action = {
+          type: "add_task",
+          task: {
+            title: titlePart || "Custom Goal",
+            priority: "medium",
+            estimatedHours: 2,
+            originalDeadline: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+            description: "Added via chat companion command."
+          }
+        };
+      } else if (userMsg.startsWith("delete task ") || userMsg.startsWith("remove task ")) {
+        const titlePart = message.replace(/^(delete task|remove task)\s+/i, "").trim();
+        responseText = `Done! I have discarded task/assignment **"${titlePart}"** from your agenda. Cleaning up low-value clutter helps you focus on high-impact objectives!`;
+        suggestions = ["Optimize Calendar", "Review remaining tasks"];
+        action = {
+          type: "delete_task",
+          taskTitle: titlePart
+        };
       } else {
         responseText = `I'm fully online and scanning your upcoming deadlines! 🎯 
+        
+To study effectively without burning out, let's practice **Time Blocking** or the **Pomodoro Technique** (25 minutes deep work, 5 minutes rest). This ensures you stay active, focused, and secure your due dates easily.
 
-With the current schedule, you've got everything completely locked-in. If you want, we can do a **25-minute Pomodoro study block** right now, or we can fetch tasks from any syllabus you drop in!
-
-What is your immediate focus goal?`;
+What is your immediate focus goal? You can also type "add task [name]" or "delete task [name]" to manage your agenda!`;
       }
       return res.json({
         success: true,
         text: responseText,
-        suggestions
+        suggestions,
+        action
       });
     }
 
@@ -609,11 +646,32 @@ What is your immediate focus goal?`;
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            reply: { type: Type.STRING, description: "Your chat reply message. Standard supportive sassy markdown text." },
+            reply: { 
+              type: Type.STRING, 
+              description: "Your chat reply message. Standard supportive sassy markdown text. ALWAYS explain and coach the user on best time management and effective task completion techniques (e.g. Pomodoro, Spaced Repetition, Eat the Frog, Feynman Technique, Time Blocking) to guide them on how to finish tasks without missing deadlines." 
+            },
             suggestions: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
               description: "2 or 3 quick auto-clickable reply templates representing natural user choices."
+            },
+            action: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING, description: "Action type: 'add_task' or 'delete_task' if requested by the user, otherwise omit/empty." },
+                task: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    priority: { type: Type.STRING, enum: ["low", "medium", "high", "critical"] },
+                    estimatedHours: { type: Type.NUMBER },
+                    originalDeadline: { type: Type.STRING, description: "Date string in format YYYY-MM-DD" },
+                    description: { type: Type.STRING }
+                  },
+                  required: ["title", "priority", "estimatedHours", "originalDeadline"]
+                },
+                taskTitle: { type: Type.STRING, description: "Title of the task to delete if user requested deleting a task." }
+              }
             }
           },
           required: ["reply", "suggestions"]
@@ -625,7 +683,8 @@ What is your immediate focus goal?`;
     return res.json({
       success: true,
       text: parsed.reply || "I am listening closely. Let's conquer these deadlines!",
-      suggestions: parsed.suggestions || ["Start Focus Session", "Optimize Schedule", "Show tasks"]
+      suggestions: parsed.suggestions || ["Start Focus Session", "Optimize Schedule", "Show tasks"],
+      action: parsed.action
     });
 
   } catch (err: any) {
@@ -633,17 +692,20 @@ What is your immediate focus goal?`;
     // Graceful fallback response when real Gemini API call fails (e.g. 503 high demand)
     let responseText = "";
     let suggestions = ["Start Focus Hour Now", "Let's Re-Optimize", "Explain Study Strategy"];
+    let action: any = null;
     
     const userMsg = (req.body?.message || "").toLowerCase();
     if (userMsg.includes("overwhelmed") || userMsg.includes("stressed") || userMsg.includes("anxious")) {
       responseText = `Breathe down! **The Last-Minute Life Saver** is fully synchronized.
+      
+To stay structured and reduce anxiety, try the **Eat the Frog First** technique—do your hardest task at the start. Or practice the **Pomodoro Power Play** (25 minutes deep work, 5 minutes screen-free break) to build focus momentum easily!
 
 Looking at your load, you have some tasks coming up. Specifically, your highest priority exam prep needs some urgent love within the next few days.
 
 Here is the emergency micro-plan:
-1. We will carve out direct **45 minutes** tonight at **7:00 PM** to tackle the first sub-task.
+1. We will carve out direct **45 minutes** tonight at **7:00 PM** to tackle the first task.
 2. I have auto-placed a 10-minute break with zero notifications directly after.
-3. You do not need to look at the entire task yet. Just complete *one single sub-task*!
+3. You do not need to look at the entire task yet. Just complete a single task block!
 
 Should I activate Autopilot to lock this block in?`;
       suggestions = ["Activate Autopilot", "No, push to tomorrow", "Show Study Cheat Sheet"];
@@ -653,22 +715,45 @@ Scanning for empty focus gaps between 8:00 AM and 10:00 PM:
 - **Found block:** Wednesday morning gap (09:00 - 11:30)
 - **Found block:** Thursday evening rest phase (19:30 - 21:00)
 
-I have dynamically assigned these to your high-priority study blocks. Completing these milestones now completely sweeps away last-minute panic.
+Using the **Time Blocking** technique, I have dynamically assigned these to your high-priority study blocks. Aligning focus sessions with peak daily energy is the most effective way to avoid late panic and secure your grades!
 
 Shall we lock these into your active agenda calendar?`;
       suggestions = ["Lock in Focus Blocks", "Adjust to Night-Owl Mode", "Set 25-min Timer"];
+    } else if (userMsg.startsWith("add task ") || userMsg.startsWith("create task ")) {
+      const titlePart = (req.body?.message || "").replace(/^(add task|create task)\s+/i, "").trim();
+      responseText = `I've added the task **"${titlePart}"** to your backlog board. For better time management, combine this with **Time Blocking** in your calendar so you never miss a deadline!`;
+      suggestions = ["Lock in Study Sessions", "Review remaining tasks"];
+      action = {
+        type: "add_task",
+        task: {
+          title: titlePart || "Custom Goal",
+          priority: "medium",
+          estimatedHours: 2,
+          originalDeadline: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+          description: "Added via chat companion command."
+        }
+      };
+    } else if (userMsg.startsWith("delete task ") || userMsg.startsWith("remove task ")) {
+      const titlePart = (req.body?.message || "").replace(/^(delete task|remove task)\s+/i, "").trim();
+      responseText = `I have discarded task **"${titlePart}"** from your active checklist. Streamlining your backlog lets you focus on high-impact work!`;
+      suggestions = ["Optimize Calendar", "Review remaining tasks"];
+      action = {
+        type: "delete_task",
+        taskTitle: titlePart
+      };
     } else {
       responseText = `I'm fully online and scanning your upcoming deadlines! 🎯 
+      
+To secure your academic success, try **Time Blocking**—scheduling dedicated slots for your assignments, and the **Pomodoro Technique** (25 minutes deep work, 5 minutes rest) to maintain high concentration.
 
-With the current schedule, you've got everything completely locked-in. If you want, we can do a **25-minute Pomodoro study block** right now, or we can fetch tasks from any syllabus you drop in!
-
-What is your immediate focus goal?`;
+What is your immediate focus goal? You can also ask me to "add task [name]" or "delete task [name]"!`;
     }
 
     return res.json({
       success: true,
       text: responseText,
       suggestions,
+      action,
       mode: "fallback"
     });
   }
@@ -680,7 +765,7 @@ const mockParseVoiceTask = (transcript: string, clientDate?: string) => {
   
   // Set defaults
   let title = "Voice Task";
-  let description = `Created from voice transcript: "${transcript}"`;
+  let description = `Voice transcript: "${transcript}"`;
   let category = "Work";
   let priority: "low" | "medium" | "high" | "critical" = "medium";
   let estimatedHours = 2;
@@ -774,59 +859,36 @@ const mockParseVoiceTask = (transcript: string, clientDate?: string) => {
     subject = "Marketing";
   }
 
-  // Keywords logic
+  // Keywords logic - Convert directly to clean English matching the user's intent
   if (lower.includes("exam") || lower.includes("pariksha") || lower.includes("test") || lower.includes("quiz") || lower.includes("revision") || lower.includes("doohraav") || lower.includes("padhna")) {
-    title = subject ? `${subject} Exam Revision` : "Exam Preparation Study Block";
+    title = subject ? `${subject} Exam Revision` : "Exam Preparation";
     category = "Academics";
     priority = "high";
-    description = `Auto-translated: Complete deep study and active revision prep${subject ? ` for ${subject}` : ''}.`;
+    description = `Study and revise ${subject ? subject : 'materials'} for upcoming exam.`;
   } else if (lower.includes("meeting") || lower.includes("client") || lower.includes("baithak") || lower.includes("call") || lower.includes("synch")) {
-    title = subject ? `${subject} Team Sync` : "Client Sync & Review Meeting";
+    title = subject ? `${subject} Team Sync` : "Sync Meeting";
     category = "Work";
     priority = "medium";
-    description = `Auto-translated: Synchronize deliverables, milestones, and align next sprint objectives${subject ? ` for ${subject}` : ''}.`;
+    description = `Synchronize deliverables and milestones${subject ? ` for ${subject}` : ''}.`;
   } else if (lower.includes("launch") || lower.includes("campaign") || lower.includes("product") || lower.includes("start")) {
-    title = subject ? `${subject} Launch Campaign` : "Marketing Campaign Launch Preparation";
+    title = subject ? `${subject} Launch` : "Launch Preparation";
     category = "Launch";
     priority = "critical";
-    description = `Auto-translated: Orchestrate production, deployment steps, and monitor real-time launch metrics${subject ? ` for ${subject}` : ''}.`;
+    description = `Preparation steps for launching ${subject ? subject : 'product'}.`;
   } else if (lower.includes("project") || lower.includes("karya") || lower.includes("assignment") || lower.includes("report") || lower.includes("submit")) {
-    title = subject ? `${subject} Project Assignment` : "Project Milestones Deliverables";
+    title = subject ? `${subject} Assignment` : "Assignment Submission";
     category = "Project";
     priority = "high";
-    description = `Auto-translated: Write, compile, test, and package syllabus submission deliverables${subject ? ` for ${subject}` : ''}.`;
+    description = `Complete and package deliverables${subject ? ` for ${subject}` : ''}.`;
   } else {
-    title = "Syllabus Milestone Goal";
+    // Treat title as direct translation if possible
+    title = transcript.charAt(0).toUpperCase() + transcript.slice(1);
     category = "Personal";
     priority = "medium";
   }
 
-  // Fallback specific subtasks based on category in English
-  let subtasks = [
-    { title: "Review requirements and draft initial outline", estimatedMinutes: 45 },
-    { title: "Execute core task segments & content draft", estimatedMinutes: 90 },
-    { title: "Final quality checks, reviews and submission", estimatedMinutes: 30 }
-  ];
-
-  if (category === "Academics") {
-    subtasks = [
-      { title: "Organize formulas, class notes, and syllabus materials", estimatedMinutes: 40 },
-      { title: "Solve practice problems and sample question sets", estimatedMinutes: 90 },
-      { title: "Draft high-yield flashcards and test-run weak topics", estimatedMinutes: 50 }
-    ];
-  } else if (category === "Project") {
-    subtasks = [
-      { title: "Draft technical architecture and initial implementation mockup", estimatedMinutes: 60 },
-      { title: "Write code base or core content sections", estimatedMinutes: 120 },
-      { title: "Run extensive tests, fix glitches, and format documentation", estimatedMinutes: 60 }
-    ];
-  } else if (category === "Launch") {
-    subtasks = [
-      { title: "Validate production configurations & environment variables", estimatedMinutes: 45 },
-      { title: "Coordinate team roles and prepare active rollback procedures", estimatedMinutes: 60 },
-      { title: "Go live, monitor server telemetry, and capture telemetry logs", estimatedMinutes: 120 }
-    ];
-  }
+  // NO automatic subtasks are added unless provided by user! 
+  let subtasks: any[] = [];
 
   return {
     title,
@@ -873,15 +935,17 @@ app.post("/api/gemini/voice-task", async (req, res) => {
       E.g., 'yaar kal exam hai physics ka, revision karna hai subah 9 baje' or 'we need to launch the marketing campaign on next Friday, add subtasks for design, content and emails, should take around 6 hours'.
 
       Your job is to:
-      1. Translate any Hindi, Hinglish, or Indian slang parts into clean, professional, or academic English.
-      2. Parse the transcript to extract the following fields for a Task:
-         - title: A concise, highly clear English task title suitable for a student, professional, or entrepreneur (e.g. 'Physics Exam Revision' or 'Marketing Campaign Launch').
+      1. Translate any Hindi, Hinglish, or Indian slang parts into clean, natural English.
+      2. Write the task EXACTLY as it is spoken by the user—just convert it into English. Do NOT add extra academic fluff, hypothetical goals, or marketing templates. Keep it completely literal and direct.
+      3. CRITICAL RULE: Don't add subtasks of your own until and unless they are explicitly provided by the user in the transcript. If the user did not say specific subtasks, the subtasks list MUST be empty: [].
+      4. Parse the transcript to extract the following fields for a Task:
+         - title: A concise, highly clear English task title representing exactly what the user spoke.
          - description: A brief explanation of the task in English.
          - category: Choose the most fitting category out of: 'Academics', 'Project', 'Launch', 'Work', 'Personal'.
          - priority: Choose one of: 'low' | 'medium' | 'high' | 'critical'.
          - estimatedHours: A number representing total hours (default to 2 if not stated).
          - deadline: An ISO Date String (YYYY-MM-DD). Calculate this relative to current date: ${todayDateInfo}. E.g., 'tomorrow' or 'kal' is 1 day after, 'parso' is 2 days after, 'Monday' or 'somvar' is the next Monday, etc. Calculate mathematically based on ISO: ${refDateStr}. If no deadline is specified, default to 3 days from ${refDateStr}.
-         - subtasks: A list of 3-5 logical, smaller, sequential steps (subtasks) in English to complete the main task, each with an estimatedMinutes (number, typically 30-120 mins).
+         - subtasks: A list of subtask objects. Keep this array completely empty [] unless the user explicitly requested or listed subtasks in their spoken message.
 
       User's Voice Transcript: "${transcript}"
     `;

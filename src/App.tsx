@@ -5,7 +5,6 @@ import DeadlinesList from './components/DeadlinesList';
 import CalendarPlanner from './components/CalendarPlanner';
 import ChatAssistant from './components/ChatAssistant';
 import ActiveTimer from './components/ActiveTimer';
-import AgentLogsHUD from './components/AgentLogsHUD';
 import QuickTips from './components/QuickTips';
 import Analytics from './components/Analytics';
 import { Task, CalendarBlock, AgentLog, SubTask } from './types';
@@ -733,7 +732,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
         <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 p-8 rounded-2xl shadow-2xl space-y-6 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-500/10 text-purple-400">
             <AlertOctagon className="h-6 w-6" />
           </div>
           <div className="space-y-2">
@@ -754,7 +753,7 @@ export default function App() {
               <li>VITE_FIREBASE_AUTH_DOMAIN</li>
               <li>VITE_FIREBASE_DATABASE_ID</li>
             </ul>
-            <p className="mt-2 text-amber-500/80 font-semibold">* Note: In Google AI Studio, this is automatically configured for you via the Firebase tool in the lower-right menu.</p>
+            <p className="mt-2 text-purple-400 font-semibold">* Note: In Google AI Studio, this is automatically configured for you via the Firebase tool in the lower-right menu.</p>
           </div>
         </div>
       </div>
@@ -766,7 +765,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-white" id="main-application-frame">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-purple-500/30 selection:text-white" id="main-application-frame">
       {/* Dynamic Header */}
       <Header
         autopilot={autopilot}
@@ -811,45 +810,8 @@ export default function App() {
         {/* Row 2: Grid distribution split */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Column A (Left): Task Board with Sub-tasks checklists & Cognitive Logs HUD */}
+          {/* Column A (Left): Interactive Study Schedule & Status */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Cognitive Logs HUD */}
-            <AgentLogsHUD
-              logs={logs}
-              onClearLogs={() => setLogs([])}
-              statusText={statusText}
-            />
-          </div>
-
-          {/* Column B (Right): Interactive Timetable calendar + chat / timer panels */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* Quick Tips and Suggestions Tooltip System */}
-            <QuickTips tasks={tasks} onAddSystemLog={addSystemLog} />
-            
-            {/* Split row for widgets depending on active binding */}
-            <div className="grid grid-cols-1 gap-6">
-              {/* Core Countdown active clock state */}
-              <ActiveTimer
-                activeSubtask={activeSubtask}
-                onFinishSubtask={(tId, sId) => {
-                  handleToggleSubtask(tId, sId);
-                  setActiveSubtask(null);
-                }}
-                onAddSystemLog={addSystemLog}
-              />
-
-              {/* Chat companion portal */}
-              <ChatAssistant
-                currentTasks={tasks}
-                onTriggerOptimization={() => autoScheduleBlocks()}
-                statusText={statusText}
-                isProcessing={isProcessing}
-                onAddSystemLog={addSystemLog}
-              />
-            </div>
-
-            {/* Calendar Blocks list planner */}
             <CalendarPlanner
               blocks={blocks}
               tasks={tasks}
@@ -858,6 +820,22 @@ export default function App() {
               onAutoSchedule={() => autoScheduleBlocks()}
               onAddManualBlock={handleAddManualBlock}
               selectedDateStr={selectedDateStr}
+            />
+          </div>
+
+          {/* Column B (Right): Countdown Clock & Time Management Tips */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Quick Tips and Suggestions Tooltip System */}
+            <QuickTips tasks={tasks} onAddSystemLog={addSystemLog} />
+            
+            {/* Core Countdown active clock state */}
+            <ActiveTimer
+              activeSubtask={activeSubtask}
+              onFinishSubtask={(tId, sId) => {
+                handleToggleSubtask(tId, sId);
+                setActiveSubtask(null);
+              }}
+              onAddSystemLog={addSystemLog}
             />
           </div>
         </div>
@@ -872,6 +850,17 @@ export default function App() {
           <span>Model: Gemini 3.5 Flash</span>
         </div>
       </footer>
+
+      {/* Redesigned Floating Chat Companion */}
+      <ChatAssistant
+        currentTasks={tasks}
+        onTriggerOptimization={() => autoScheduleBlocks()}
+        statusText={statusText}
+        isProcessing={isProcessing}
+        onAddSystemLog={addSystemLog}
+        onAddTask={handleAddTask}
+        onDeleteTask={handleDeleteTask}
+      />
     </div>
   );
 }

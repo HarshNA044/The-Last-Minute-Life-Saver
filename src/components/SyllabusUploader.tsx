@@ -224,12 +224,12 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
   return (
     <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-5 md:p-6 relative overflow-hidden" id="task-uploader-container">
       {/* Background Accent Grid */}
-      <div className="absolute inset-0 bg-radial-gradient from-amber-500/5 to-transparent pointer-events-none opacity-40" />
+      <div className="absolute inset-0 bg-radial-gradient from-purple-500/5 to-transparent pointer-events-none opacity-40" />
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5 border-b border-neutral-800/60 pb-4 relative z-10">
         <div>
           <h2 className="text-sm font-mono font-medium text-neutral-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <FolderOpen className="w-4 h-4 text-amber-500" />
+            <FolderOpen className="w-4 h-4 text-purple-500" />
             Project Brief & Syllabus Importer
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
@@ -238,8 +238,8 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
         </div>
         <div className="flex items-center gap-2">
           {isProcessing ? (
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs font-mono text-amber-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+            <span className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full text-xs font-mono text-purple-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
               Parsing Schedules...
             </span>
           ) : (
@@ -258,7 +258,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
               placeholder="Paste syllabus segments, project briefs, or type: Client feedback due Friday, estimate 4 hours."
-              className="w-full min-h-[105px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 pr-12 pb-14 border border-neutral-800/60 focus:border-amber-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
+              className="w-full min-h-[105px] text-xs bg-neutral-950 text-neutral-100 placeholder-neutral-600 rounded-xl p-4 pr-12 pb-14 border border-neutral-800/60 focus:border-purple-500/50 focus:outline-none transition-colors duration-200 resize-none leading-relaxed font-sans"
               disabled={isProcessing}
             />
             <div className="absolute right-3.5 bottom-3.5 flex items-center gap-2">
@@ -268,7 +268,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-sans font-bold transition-all duration-300 cursor-pointer ${
                   isListening
                     ? "bg-rose-600 text-white animate-pulse shadow-md shadow-rose-500/25 opacity-100"
-                    : "bg-amber-500 hover:bg-amber-400 text-neutral-950 opacity-100 shadow-sm"
+                    : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white opacity-100 shadow-sm"
                 }`}
                 title="Dictate project schedules using voice"
               >
@@ -279,7 +279,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
                   </>
                 ) : (
                   <>
-                    <Mic className="w-3.5 h-3.5 text-neutral-950 opacity-100 stroke-[2.5]" />
+                    <Mic className="w-3.5 h-3.5 text-white opacity-100 stroke-[2.5]" />
                     <span className="opacity-100">Speak (Mic)</span>
                   </>
                 )}
@@ -321,7 +321,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
               onClick={() => fileInputRef.current?.click()}
               className={`flex-1 min-h-[50px] border-2 border-dashed rounded-xl flex items-center justify-center p-3 text-center cursor-pointer select-none transition-all duration-200 ${
                 dragActive
-                  ? "border-amber-500 bg-amber-500/5 text-amber-500"
+                  ? "border-purple-500 bg-purple-500/5 text-purple-400"
                   : "border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-950/50 text-neutral-500"
               }`}
             >
@@ -346,7 +346,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
               className={`h-[50px] shrink-0 sm:w-[150px] rounded-xl flex items-center justify-center gap-1.5 font-sans font-semibold text-xs transition-all duration-200 ${
                 !pastedText.trim() || isProcessing
                   ? "bg-neutral-800 text-neutral-500 border border-neutral-800/50 cursor-not-allowed"
-                  : "bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md shadow-amber-500/10 cursor-pointer"
+                  : "bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white shadow-md shadow-purple-500/10 cursor-pointer"
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
                   disabled={isProcessing}
                   className="w-full text-left p-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-850 hover:border-neutral-800 transition-all duration-200 group flex gap-3 cursor-pointer"
                 >
-                  <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 shrink-0 text-amber-500 group-hover:text-amber-400 font-mono text-[10px] font-bold">
+                  <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 shrink-0 text-purple-400 group-hover:text-purple-300 font-mono text-[10px] font-bold">
                     {item.category}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -403,10 +403,7 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-2 text-[10px] font-mono text-neutral-500 bg-neutral-950/20 p-2.5 rounded-lg border border-neutral-800/10">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
-            <span>Files are processed securely through a local server proxy without public exposure.</span>
-          </div>
+          {/* No secure local proxy text here */}
         </div>
       </div>
     </div>

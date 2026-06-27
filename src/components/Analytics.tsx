@@ -289,7 +289,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4 mb-5">
         <div>
           <h2 className="text-sm font-mono font-medium text-neutral-300 flex items-center gap-1.5 uppercase tracking-wider">
-            <TrendingUp className="w-4 h-4 text-amber-500" />
+            <TrendingUp className="w-4 h-4 text-purple-500" />
             Course Progress & Productivity Trends
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
@@ -306,7 +306,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
               onClick={() => handleToggleView('daywise')}
               className={`px-3.5 py-1 text-[11px] font-mono rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'daywise'
-                  ? 'bg-amber-500 text-neutral-950 font-semibold shadow-sm'
+                  ? 'bg-purple-600 text-white font-semibold shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -319,7 +319,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
               onClick={() => handleToggleView('monthwise')}
               className={`px-3.5 py-1 text-[11px] font-mono rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'monthwise'
-                  ? 'bg-amber-500 text-neutral-950 font-semibold shadow-sm'
+                  ? 'bg-cyan-600 text-white font-semibold shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -333,7 +333,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
             onClick={() => setShowHelp(!showHelp)}
             className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
               showHelp 
-                ? 'bg-neutral-800 border-neutral-700 text-amber-400' 
+                ? 'bg-neutral-800 border-neutral-700 text-purple-400' 
                 : 'bg-neutral-950 border-neutral-800/80 text-neutral-400 hover:text-neutral-300'
             }`}
             title="Help Panel"
@@ -355,16 +355,16 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           >
             <div className="p-4 space-y-3 text-xs leading-relaxed text-neutral-400">
               <h3 className="font-mono text-xs font-semibold uppercase text-neutral-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <Sparkles className="w-3.5 h-3.5 text-purple-500" />
                 Adaptive Analytics Engine
               </h3>
               <p>
                 We parse your syllabus files or project briefs, extract scheduled deliverables, and track completion indices dynamically.
               </p>
               <ul className="list-disc list-inside space-y-1 pl-1">
-                <li><span className="text-amber-400 font-medium">Gold Area</span>: Volume of checklist actions completed.</li>
+                <li><span className="text-purple-400 font-medium">Completed Area</span>: Volume of checklist actions completed.</li>
                 <li><span className="text-neutral-500 font-medium">Gray Area</span>: Leftover schedule workload.</li>
-                <li><span className="text-emerald-400 font-medium">Trend Curve (%)</span>: Real-time efficiency velocity. Selecting specific days/months below reveals precise animated completion sliders.</li>
+                <li><span className="text-cyan-400 font-medium">Trend Curve (%)</span>: Real-time efficiency velocity. Selecting specific days/months below reveals precise animated completion sliders.</li>
               </ul>
             </div>
           </motion.div>
@@ -379,7 +379,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           <div className="md:col-span-6 bg-neutral-950/50 border border-neutral-850 rounded-xl p-4 flex flex-col justify-between" id="daywise-completed-tasks-card">
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3 text-amber-500" />
+                <Clock className="w-3 h-3 text-purple-500" />
                 Select Specific Calendar Day
               </span>
               
@@ -422,7 +422,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
             <div className="mt-4 space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="text-xs font-mono font-medium text-neutral-400">Day Completed Tasks:</span>
-                <span className="text-sm font-bold font-mono text-amber-400">{dayMetrics.rate}%</span>
+                <span className="text-sm font-bold font-mono text-purple-400">{dayMetrics.rate}%</span>
               </div>
               
               {/* Animated Progress Bar Frame */}
@@ -431,7 +431,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
                   initial={{ width: 0 }}
                   animate={{ width: `${dayMetrics.rate}%` }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
                 />
               </div>
 
@@ -446,7 +446,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           <div className="md:col-span-6 bg-neutral-950/50 border border-neutral-850 rounded-xl p-4 flex flex-col justify-between" id="monthwise-completed-tasks-card">
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-emerald-500" />
+                <Calendar className="w-3 h-3 text-cyan-500" />
                 Select Academic Month
               </span>
               
@@ -493,7 +493,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
             <div className="mt-4 space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="text-xs font-mono font-medium text-neutral-400">Month Completed Tasks:</span>
-                <span className="text-sm font-bold font-mono text-emerald-400">{monthMetrics.rate}%</span>
+                <span className="text-sm font-bold font-mono text-cyan-400">{monthMetrics.rate}%</span>
               </div>
               
               {/* Animated Progress Bar Frame */}
@@ -502,7 +502,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
                   initial={{ width: 0 }}
                   animate={{ width: `${monthMetrics.rate}%` }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full"
                 />
               </div>
 
@@ -519,11 +519,11 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           <div className="bg-neutral-950/30 border border-neutral-850 p-3 rounded-xl flex flex-col justify-between">
             <span className="text-[9px] font-mono text-neutral-500 uppercase">Cumulative Index</span>
             <div className="flex items-baseline gap-1 mt-1.5">
-              <span className="text-xl font-bold font-sans text-amber-500">{completionRate}%</span>
+              <span className="text-xl font-bold font-sans bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">{completionRate}%</span>
               <span className="text-[9px] font-mono text-neutral-600">rate</span>
             </div>
             <div className="w-full bg-neutral-900 h-1 rounded-full mt-2 overflow-hidden">
-              <div className="bg-amber-500 h-full rounded-full" style={{ width: `${completionRate}%` }} />
+              <div className="bg-gradient-to-r from-purple-600 to-cyan-500 h-full rounded-full" style={{ width: `${completionRate}%` }} />
             </div>
           </div>
 
@@ -543,7 +543,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
         
         {isEmptyState && (
           <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-[2.5px] rounded-2xl flex flex-col items-center justify-center text-center p-6 z-20">
-            <AlertCircle className="w-8 h-8 text-amber-500/80 mb-2 animate-bounce" />
+            <AlertCircle className="w-8 h-8 text-purple-500/80 mb-2 animate-bounce" />
             <h4 className="font-sans font-medium text-xs text-neutral-200">Demonstration Analytics Active</h4>
             <p className="font-sans text-[11px] text-neutral-400 max-w-sm mt-1">
               Import a task brief or schedule deliverables to display active completion rates!
@@ -558,8 +558,8 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           >
             <defs>
               <linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={viewMode === 'daywise' ? '#f59e0b' : '#10b981'} stopOpacity={0.25}/>
-                <stop offset="95%" stopColor={viewMode === 'daywise' ? '#f59e0b' : '#10b981'} stopOpacity={0}/>
+                <stop offset="5%" stopColor={viewMode === 'daywise' ? '#a855f7' : '#06b6d4'} stopOpacity={0.25}/>
+                <stop offset="95%" stopColor={viewMode === 'daywise' ? '#a855f7' : '#06b6d4'} stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="remainingGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#525252" stopOpacity={0.15}/>
@@ -617,7 +617,7 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
               type="monotone" 
               dataKey="Completed" 
               stackId="1" 
-              stroke={viewMode === 'daywise' ? '#f59e0b' : '#10b981'} 
+              stroke={viewMode === 'daywise' ? '#a855f7' : '#06b6d4'} 
               fillOpacity={1} 
               fill="url(#completedGrad)" 
               strokeWidth={1.5}
@@ -638,9 +638,9 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
               yAxisId="right"
               type="monotone" 
               dataKey="Completion Rate (%)" 
-              stroke={viewMode === 'daywise' ? '#f59e0b' : '#10b981'} 
+              stroke={viewMode === 'daywise' ? '#a855f7' : '#06b6d4'} 
               strokeWidth={2}
-              dot={{ stroke: viewMode === 'daywise' ? '#f59e0b' : '#10b981', strokeWidth: 2, r: 3, fill: '#0a0a0a' }}
+              dot={{ stroke: viewMode === 'daywise' ? '#a855f7' : '#06b6d4', strokeWidth: 2, r: 3, fill: '#0a0a0a' }}
               activeDot={{ r: 5 }}
             />
           </ComposedChart>

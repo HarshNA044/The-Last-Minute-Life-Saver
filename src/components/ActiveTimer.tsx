@@ -80,13 +80,13 @@ export default function ActiveTimer({
       {/* Segment Header */}
       <div className="w-full flex items-center justify-between border-b border-neutral-800/60 pb-3 z-10">
         <div className="flex items-center gap-2">
-          <Timer className="w-4 h-4 text-amber-500 animate-pulse" />
+          <Timer className="w-4 h-4 text-purple-500 animate-pulse" />
           <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300">
             Study Session Timer
           </h3>
         </div>
         <div className="flex items-center gap-1.5 bg-neutral-950/80 border border-neutral-800/40 px-2 py-0.5 rounded-full select-none">
-          <Award className="w-3 h-3 text-amber-400" />
+          <Award className="w-3 h-3 text-purple-400" />
           <span className="font-mono text-[9px] text-neutral-400">Completed Sessions: {completedStreaks}</span>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function ActiveTimer({
               exit={{ opacity: 0, y: 4 }}
               className="space-y-1"
             >
-              <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono rounded-full uppercase tracking-wider">
+              <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-mono rounded-full uppercase tracking-wider">
                 Active Study Block
               </span>
               <h4 className="font-sans font-bold text-neutral-200 text-sm truncate mt-1 max-w-[240px] mx-auto">
@@ -131,6 +131,12 @@ export default function ActiveTimer({
       <div className="relative w-44 h-44 flex items-center justify-center my-3 z-10">
         {/* SVG Circular Dial */}
         <svg className="absolute w-full h-full transform -rotate-90">
+          <defs>
+            <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#9333ea" />
+              <stop offset="100%" stopColor="#0891b2" />
+            </linearGradient>
+          </defs>
           <circle
             cx="88"
             cy="88"
@@ -142,7 +148,8 @@ export default function ActiveTimer({
             cx="88"
             cy="88"
             r="80"
-            className="stroke-amber-500 fill-none"
+            stroke="url(#timer-gradient)"
+            className="fill-none"
             strokeWidth="6"
             strokeDasharray={502} // 2 * pi * 80 approx
             strokeLinecap="round"
@@ -183,7 +190,7 @@ export default function ActiveTimer({
               }}
               className={`py-1 rounded border transition-all truncate uppercase cursor-pointer ${
                 ambientPreset === sound 
-                  ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold' 
+                  ? 'bg-purple-500/10 border-purple-500 text-purple-400 font-bold' 
                   : 'bg-neutral-950 border-neutral-850 text-neutral-500 hover:text-neutral-400'
               }`}
             >
@@ -209,7 +216,7 @@ export default function ActiveTimer({
           className={`flex-[2] h-10 rounded-xl flex items-center justify-center gap-2 font-sans font-semibold text-xs transition-all cursor-pointer ${
             isActive
               ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700/50 shadow-inner'
-              : 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md shadow-amber-500/10'
+              : 'bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white shadow-md shadow-purple-500/10'
           }`}
         >
           {isActive ? (

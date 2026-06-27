@@ -42,11 +42,12 @@ export default function CalendarPlanner({
 
   const neededMinutes = incompleteSubtasks.reduce((sum, st) => sum + st.estimatedMinutes, 0);
   
-  let riskStatus: { label: string; color: string; desc: string; progress: number } = {
+  let riskStatus: { label: string; color: string; desc: string; progress: number; technique: string } = {
     label: "Fully Scheduled",
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     desc: "All of your study subtasks have scheduled focus slots on your calendar.",
-    progress: 10
+    progress: 10,
+    technique: "🎯 Recommended: Spaced Repetition & Feynman Technique. Review your notes and explain concepts simply to solidify long-term retention."
   };
 
   if (neededMinutes > 0 && scheduledFocusMinutes === 0) {
@@ -54,21 +55,32 @@ export default function CalendarPlanner({
       label: "Action Required",
       color: "text-rose-400 bg-rose-500/10 border-rose-500/20 animate-pulse",
       desc: "Warning: You have assignments listed, but haven't scheduled any study blocks yet!",
-      progress: 95
+      progress: 95,
+      technique: "🔥 Recommended: Eat the Frog + Pomodoro. Turn off your phone, pick your most intimidating task, and focus for just 25 minutes to break procrastination inertia!"
     };
   } else if (neededMinutes > scheduledFocusMinutes) {
     riskStatus = {
       label: "More Study Time Needed",
-      color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+      color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
       desc: `You have about ${Math.round(neededMinutes / 60)}h of work, but only ${Math.round(scheduledFocusMinutes / 60)}h scheduled. Click "Optimize Now" below to fill the gaps!`,
-      progress: 60
+      progress: 60,
+      technique: "⚡ Recommended: Time Blocking. Block explicit focus slots in your calendar to match your workload and hit your deadlines without stress."
     };
   } else if (neededMinutes > 0) {
     riskStatus = {
       label: "Schedule Fully Optimized",
       color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
       desc: "You have plenty of study sessions scheduled to cover all your assignments!",
-      progress: 25
+      progress: 25,
+      technique: "🎯 Recommended: Active Recall. Self-test or write summaries without looking at materials to secure top performance."
+    };
+  } else {
+    riskStatus = {
+      label: "Balanced Schedule",
+      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+      desc: "Keep a healthy study-to-break ratio to keep your cognitive battery high.",
+      progress: 10,
+      technique: "🍀 Recommended: Ultradian Rhythms. Work in 90-minute waves and take real breaks (no screens!) to keep your focus battery 100% charged."
     };
   }
 
@@ -98,8 +110,21 @@ export default function CalendarPlanner({
           </span>
         </div>
         
-        <p className="text-xs text-neutral-400 font-sans leading-relaxed">
-          {riskStatus.desc}
+        <p className="text-xs text-neutral-400 dark:text-neutral-300 font-sans leading-relaxed">
+          {(() => {
+            const parts = riskStatus.desc.split(': ');
+            if (parts.length > 1) {
+              return (
+                <span>
+                  <strong className="font-bold text-purple-700 dark:text-purple-400 mr-1">
+                    {parts[0]}:
+                  </strong>
+                  {parts.slice(1).join(': ')}
+                </span>
+              );
+            }
+            return riskStatus.desc;
+          })()}
         </p>
 
         {/* Dynamic bar */}
@@ -109,7 +134,7 @@ export default function CalendarPlanner({
               riskStatus.progress > 70 
                 ? 'bg-rose-500' 
                 : riskStatus.progress > 40 
-                ? 'bg-amber-500' 
+                ? 'bg-purple-500' 
                 : 'bg-emerald-500'
             }`}
             initial={{ width: 0 }}
@@ -117,9 +142,28 @@ export default function CalendarPlanner({
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
-        <div className="flex justify-between items-center text-[9px] font-mono text-neutral-500 mt-2">
+        
+        <div className="flex justify-between items-center text-[9px] font-mono text-neutral-500 mt-2 pb-3.5 border-b border-neutral-850/50">
           <span>0h Slotted</span>
           <span>Target: {Math.ceil(neededMinutes / 60)}h required work</span>
+        </div>
+
+        {/* Actionable Time Management Advice Box */}
+        <div className="mt-3.5 p-3 rounded-lg bg-purple-500/5 border border-purple-500/10 text-[11px] leading-relaxed text-purple-300 dark:text-purple-300 font-sans">
+          {(() => {
+            const parts = riskStatus.technique.split('. ');
+            if (parts.length > 1) {
+              return (
+                <span>
+                  <strong className="font-bold text-purple-700 dark:text-purple-400 block sm:inline">
+                    {parts[0]}.
+                  </strong>{" "}
+                  {parts.slice(1).join('. ')}
+                </span>
+              );
+            }
+            return riskStatus.technique;
+          })()}
         </div>
       </div>
 
@@ -163,9 +207,9 @@ export default function CalendarPlanner({
 
             const colors = {
               focus: {
-                bg: "bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 text-neutral-200",
-                badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-                iconColor: "text-amber-500"
+                bg: "bg-purple-500/5 hover:bg-purple-500/10 border-purple-500/20 text-neutral-200",
+                badge: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                iconColor: "text-purple-400"
               },
               break: {
                 bg: "bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/15 text-neutral-300",
@@ -204,7 +248,7 @@ export default function CalendarPlanner({
               >
                 {/* Visual Glow to make it stand out */}
                 {!block.completed && block.type === 'focus' && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500" />
                 )}
 
                 <div className="flex items-center gap-3 min-w-0">

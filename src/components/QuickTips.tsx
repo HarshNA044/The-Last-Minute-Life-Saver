@@ -19,38 +19,50 @@ const GENERAL_TIPS: Tip[] = [
   {
     id: 'g1',
     title: 'The Pomodoro Power Play',
-    content: 'Work intently for 25 minutes, then take a strict 5-minute screen-free break. Your brain filters complex data during rest.',
+    content: 'Work intently for 25 minutes, then take a strict 5-minute screen-free break. This sustains high cognitive capacity over long sessions.',
     type: 'focus'
   },
   {
     id: 'g2',
     title: 'Eat the Frog First',
-    content: 'Do your hardest, most dread-inducing study task at the start of your day. Everything else will feel breezy afterwards.',
+    content: 'Tackle your heaviest, most dreaded assignment at the absolute start of your day. Everything else feels effortless once the frog is eaten.',
     type: 'strategy'
   },
   {
     id: 'g3',
-    title: 'Beat the Zeigarnik Effect',
-    content: 'Unfinished tasks occupy active memory. Writing down exactly when and how you will complete a subtask immediately frees mental bandwidth.',
-    type: 'mindset'
+    title: 'Feynman Learning Method',
+    content: 'Explain core syllabus concepts as if teaching a 10-year-old child. This immediately exposes knowledge gaps and speeds up exam prep.',
+    type: 'strategy'
   },
   {
     id: 'g4',
-    title: 'Ultradian Rhythm Alignment',
-    content: 'Human focus naturally peaks and drops in 90-minute waves. Do not push through fatigue; sync deep focus blocks with your peak energy.',
+    title: 'Durable Spaced Repetition',
+    content: 'Review key exam concepts on intervals of 1, 3, and 7 days. This intercepts the forgetting curve and cements memories permanently.',
     type: 'general'
   },
   {
     id: 'g5',
-    title: 'Environmental Air-Gap',
-    content: 'Place your mobile device in another room or out of arm\'s reach. Reducing visual triggers prevents impulse checking.',
-    type: 'focus'
+    title: 'Time Blocking Strategy',
+    content: 'Assign explicit, time-boxed blocks for active tasks on your daily schedule instead of using generic lists. This blocks procrastination.',
+    type: 'strategy'
   },
   {
     id: 'g6',
-    title: 'Micro-Progress Momentum',
-    content: 'When feeling zero motivation, promise yourself to work for just 5 minutes. The friction is in starting, not in doing.',
+    title: 'The Eisenhower Priority Grid',
+    content: 'Filter workload by Urgent vs Important. Spend 80% of your energy on Important but Non-Urgent tasks to secure deadlines early.',
+    type: 'strategy'
+  },
+  {
+    id: 'g7',
+    title: 'Beat the Zeigarnik Effect',
+    content: 'Unfinished tasks occupy active memory. Writing down exactly when and how you will complete a task immediately frees up mental bandwidth.',
     type: 'mindset'
+  },
+  {
+    id: 'g8',
+    title: 'Ultradian Rhythm Alignment',
+    content: 'Human focus naturally peaks and drops in 90-minute waves. Sync deep focus blocks with your peak daily energy levels.',
+    type: 'general'
   }
 ];
 
@@ -175,16 +187,16 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
             id="quick-tips-panel"
           >
             {/* Background glowing aura */}
-            <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
 
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-800/60 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
+                <Lightbulb className="w-4 h-4 text-purple-400 shrink-0" />
                 <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
                   Time Management Advisor
                   {isDynamic && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/25 rounded-md text-[9px] font-mono text-amber-400 font-normal uppercase animate-pulse">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/15 border border-purple-500/25 rounded-md text-[9px] font-mono text-purple-400 font-normal uppercase animate-pulse">
                       <Sparkles className="w-2.5 h-2.5" />
                       Smart Sync
                     </span>
@@ -216,7 +228,7 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
                     id={`tip-content-${currentTip.id}`}
                   >
                     <h4 className="text-xs font-sans font-medium text-neutral-200 flex items-center gap-1.5">
-                      {currentTip.type === 'focus' && <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      {currentTip.type === 'focus' && <Zap className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
                       {currentTip.type === 'strategy' && <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                       {currentTip.type === 'mindset' && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
                       {currentTip.type === 'general' && <Lightbulb className="w-3.5 h-3.5 text-neutral-400 shrink-0" />}
@@ -239,7 +251,7 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
                 type="button"
                 id="next-tip-button"
                 onClick={handleNextTip}
-                className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-amber-400 hover:text-amber-300 transition-colors cursor-pointer hover:bg-amber-500/5 px-2 py-0.5 rounded-md"
+                className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-purple-400 hover:text-purple-300 transition-colors cursor-pointer hover:bg-purple-500/5 px-2 py-0.5 rounded-md"
               >
                 Next Tip
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -263,7 +275,7 @@ export default function QuickTips({ tasks, onAddSystemLog }: QuickTipsProps) {
               type="button"
               id="restore-tips-button"
               onClick={() => setIsVisible(true)}
-              className="text-[10px] font-mono font-medium text-amber-500 hover:text-amber-400 transition-colors cursor-pointer hover:underline"
+              className="text-[10px] font-mono font-medium text-purple-400 hover:text-purple-300 transition-colors cursor-pointer hover:underline"
             >
               Restore tips
             </button>

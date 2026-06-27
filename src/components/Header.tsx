@@ -31,67 +31,71 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [showProfileMenu]);
 
-  const headerClass = `relative w-full border-b py-4 px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-50 transition-all duration-150 ${
+  const headerClass = `relative w-full border-b py-3 px-4 sm:px-6 md:px-8 flex flex-row items-center justify-between gap-2 sm:gap-4 z-50 transition-all duration-150 ${
     isDark 
       ? 'bg-neutral-950/80 border-neutral-850 backdrop-blur-md text-neutral-100' 
       : 'bg-white/80 border-slate-200/80 backdrop-blur-md shadow-sm text-slate-800'
   }`;
 
-  const logoBgClass = `relative flex items-center justify-center w-10 h-10 rounded-xl border shadow-lg overflow-hidden ${
-    isDark 
-      ? 'bg-neutral-900 border-neutral-800 shadow-neutral-950/40' 
-      : 'bg-slate-50 border-slate-200 shadow-slate-100'
-  }`;
-
-  const titleClass = `font-sans font-bold tracking-tight text-lg leading-tight ${
-    isDark ? 'text-neutral-100' : 'text-slate-900'
-  }`;
-
-  const subtitleClass = `font-mono text-[10px] uppercase tracking-widest ${
-    isDark ? 'text-neutral-500' : 'text-slate-400'
-  }`;
-
   return (
     <header className={headerClass}>
       {/* Brand Logo & Name */}
-      <div className="flex items-center gap-3">
-        <div className={logoBgClass}>
-          <motion.div
-            animate={{
-              scale: autopilot ? 1.08 : 1,
-              rotate: isProcessing ? 360 : 0,
-            }}
-            transition={{
-              scale: { type: "spring", stiffness: 150, damping: 10 },
-              rotate: isProcessing ? { ease: "linear", duration: 6, repeat: Infinity } : { duration: 0.5 }
-            }}
-            className="text-amber-500 absolute"
-          >
-            <Shield className="w-5 h-5 stroke-[1.8]" />
-          </motion.div>
-          <motion.div
-            animate={{
-              opacity: autopilot ? 0.6 : 0.2,
-            }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
-            className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 to-transparent rounded-xl"
-          />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className={titleClass}>
-              The Last-Minute Life Saver
-            </h1>
-            <span className="flex h-1.5 w-1.5 rounded-full bg-amber-500" />
+      <div className="flex items-center gap-2 sm:gap-3 select-none shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-4">
+          
+          {/* 🔮 THE VISUAL LOGO ICON (HOURGLASS + AI SPARKLE) */}
+          <div className="relative h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center bg-white dark:bg-white rounded-xl border border-slate-200 dark:border-slate-200 shadow-sm shrink-0 overflow-hidden">
+            <motion.div
+              animate={{
+                rotate: isProcessing ? 360 : 0,
+              }}
+              transition={{
+                rotate: isProcessing ? { ease: "linear", duration: 6, repeat: Infinity } : { duration: 0.5 }
+              }}
+              className="relative z-10 w-7 h-7 sm:w-9 sm:h-9"
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <defs>
+                  <linearGradient id="cyber-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#9333ea" />
+                    <stop offset="100%" stopColor="#0891b2" />
+                  </linearGradient>
+                </defs>
+                
+                <path 
+                  d="M6 3H18M6 21H18M6 3C6 3 7 9 12 12M18 3C18 3 17 9 12 12M6 21C6 21 7 15 12 12M18 21C18 21 17 15 12 12" 
+                  stroke="url(#cyber-gradient)" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                
+                <path 
+                  d="M12 7.5C12 9.2 11.2 10.2 10 11C11.2 11.8 12 12.8 12 14.5C12 12.8 12.8 11.8 14 11C12.8 10.2 12 9.2 12 7.5Z" 
+                  fill="url(#cyber-gradient)"
+                  className="animate-pulse-slow"
+                />
+              </svg>
+            </motion.div>
           </div>
-          <p className={subtitleClass}>
-            Smart Deadline Planner & AI Companion
-          </p>
+
+          {/* 🏷️ BRAND TYPOGRAPHY BLOCK */}
+          <div className="flex flex-col justify-center">
+            <span className="text-[7px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-[0.22em] sm:tracking-[0.28em] uppercase mb-0.5 sm:mb-1 leading-none">
+              THE
+            </span>
+            <h1 className="text-sm sm:text-xl font-black tracking-wider text-slate-800 dark:text-slate-100 leading-none font-sans">
+              <span className="mr-1 font-black text-neutral-800 dark:text-neutral-300">LAST</span><span className="bg-gradient-to-r from-purple-600 to-cyan-500 dark:from-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">MINUTE</span>
+            </h1>
+            <p className="text-[7px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-[0.22em] sm:tracking-[0.28em] uppercase mt-1 sm:mt-1.5 leading-none">
+              LIFE SAVER
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Control Switch */}
-      <div className="flex items-center gap-3">
+      {/* Control Switch / Actions */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Real-time Status Bar Area */}
         <motion.div
           key={`status-bar-${theme}`}
@@ -108,10 +112,10 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
         >
           <span className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-              isProcessing ? 'bg-amber-400' : 'bg-emerald-400'
+              isProcessing ? 'bg-purple-400' : 'bg-emerald-400'
             }`} />
             <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              isProcessing ? 'bg-amber-500' : 'bg-emerald-500'
+              isProcessing ? 'bg-purple-500' : 'bg-emerald-500'
             }`} />
           </span>
           <span className={`font-mono text-[9px] uppercase tracking-wider font-bold ${
@@ -119,7 +123,7 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
           }`}>
             Status:
           </span>
-          <span className="font-mono text-[10px] truncate max-w-[180px] lg:max-w-[260px] font-medium" title={statusText}>
+          <span className="font-mono text-[10px] truncate max-w-[120px] lg:max-w-[200px] font-medium" title={statusText}>
             {statusText}
           </span>
         </motion.div>
@@ -134,10 +138,10 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
             rotate: theme === 'dark' ? 360 : 0,
           }}
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
-          className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm ${
+          className={`relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition-all duration-300 cursor-pointer overflow-hidden shadow-sm shrink-0 ${
             isDark
-              ? 'bg-neutral-900 border-neutral-800 text-amber-400 hover:text-amber-300 hover:border-neutral-700 hover:bg-neutral-850 hover:shadow-md hover:shadow-amber-500/10'
-              : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 hover:bg-slate-100/80 hover:shadow-md hover:shadow-slate-200/50'
+              ? 'bg-neutral-900 border-neutral-800 text-purple-400 hover:text-purple-300 hover:border-purple-500/40 hover:bg-neutral-850 hover:shadow-md hover:shadow-purple-500/10'
+              : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-purple-600 hover:border-purple-300 hover:bg-slate-100/80 hover:shadow-md hover:shadow-purple-500/5'
           }`}
           title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -153,9 +157,9 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
               className="flex items-center justify-center"
             >
               {isDark ? (
-                <Sun className="w-4 h-4 fill-amber-500/10 stroke-[2.2]" />
+                <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-400 stroke-[2.2]" />
               ) : (
-                <Moon className="w-4 h-4 fill-indigo-500/5 stroke-[2.2] text-indigo-600" />
+                <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-600 stroke-[2.2]" />
               )}
             </motion.div>
           </AnimatePresence>
@@ -163,22 +167,20 @@ export default function Header({ autopilot, setAutopilot, statusText, isProcessi
 
         {/* User profile with inline transition option */}
         {user && (
-          <div className="relative" id="profile-container">
+          <div className="relative shrink-0" id="profile-container">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border relative shadow-sm transition-all duration-200 active:scale-95 cursor-pointer shrink-0 ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border relative shadow-sm transition-all duration-200 active:scale-95 cursor-pointer ${
                 isDark 
-                  ? 'bg-amber-500/10 text-amber-400 border-neutral-800 hover:border-amber-500/50 hover:bg-amber-500/15' 
-                  : 'bg-amber-500/15 text-amber-700 border-slate-200 hover:border-amber-500/50 hover:bg-amber-500/20'
+                  ? 'bg-purple-500/10 text-purple-400 border-neutral-850 hover:border-purple-500/50 hover:bg-purple-500/15' 
+                  : 'bg-purple-500/15 text-purple-700 border-slate-200 hover:border-purple-500/50 hover:bg-purple-500/20'
               }`}
               id="profile-logo-button"
               title={user.displayName || 'User profile'}
               aria-label="Toggle sign out"
             >
               {user.displayName ? user.displayName[0].toUpperCase() : 'U'}
-              <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 ring-1 ring-emerald-500/35 ${
-                isDark ? 'border-neutral-950' : 'border-white'
-              }`} />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-neutral-950 ring-1 ring-emerald-500/35" />
             </button>
 
             <AnimatePresence>
