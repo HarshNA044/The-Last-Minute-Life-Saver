@@ -125,6 +125,97 @@ export default function DeadlinesList({
   const [autoSubmitVoice, setAutoSubmitVoice] = useState(false); // Instantly schedule task on speak
   const recognitionRef = React.useRef<any>(null);
 
+  const localParseVoiceTask = (transcript: string) => {
+    const lineLower = transcript.toLowerCase();
+    const refDateStr = new Date().toISOString().split('T')[0];
+    const parts = refDateStr.split('-');
+    const today = parts.length === 3 
+      ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0) 
+      : new Date();
+
+    const getOffsetDateStr = (offsetDays: number) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offsetDays);
+      const y = d.getFullYear();
+      const m = (d.getMonth() + 1).toString().padStart(2, '0');
+      const day = d.getDate().toString().padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    let offset = 0;
+    let tDeadline = getOffsetDateStr(0);
+
+    if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
+      offset = -1;
+      tDeadline = getOffsetDateStr(-1);
+    } else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
+      if (lineLower.includes("parso") || lineLower.includes("parson")) {
+        offset = 2;
+      } else {
+        offset = 1;
+      }
+      tDeadline = getOffsetDateStr(offset);
+    } else {
+      const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const foundDayIdx = days.findIndex(d => lineLower.includes(d));
+      if (foundDayIdx !== -1) {
+        const todayDay = today.getDay();
+        let targetOffset = foundDayIdx - todayDay;
+        if (targetOffset <= 0) targetOffset += 7;
+        offset = targetOffset;
+        tDeadline = getOffsetDateStr(offset);
+      }
+    }
+
+    // Detect category/priority/estimated hours
+    let tTitle = "Voice Task";
+    let tDesc = `Created from voice transcript: "${transcript}"`;
+    let tCategory = "Work";
+    let tPriority = "medium";
+    let tHours = 2;
+    let subtaskLines: string[] = ["Review requirements", "Implement target modules", "Double check submission details"];
+
+    if (lineLower.includes("physics") || lineLower.includes("lab") || lineLower.includes("bhautik")) {
+      tTitle = "Physics Assignment";
+      tCategory = "Academics";
+      tPriority = "high";
+      tHours = 3;
+      subtaskLines = ["Draft experimental formulas", "Compile data graphs", "Final practical check"];
+    } else if (lineLower.includes("math") || lineLower.includes("calculus") || lineLower.includes("ganit") || lineLower.includes("quiz")) {
+      tTitle = "Math Task";
+      tCategory = "Academics";
+      tPriority = "critical";
+      tHours = 4;
+      subtaskLines = ["Review notes and lecture equations", "Solve target practice sheets", "Validate homework sheets"];
+    } else if (lineLower.includes("computer") || lineLower.includes("cs") || lineLower.includes("coding") || lineLower.includes("programming") || lineLower.includes("project")) {
+      tTitle = "Coding Sprint";
+      tCategory = "Project";
+      tPriority = "high";
+      tHours = 5;
+      subtaskLines = ["Outline database schemas", "Write server controllers", "Execute end-to-end sandbox tests"];
+    } else {
+      const cleanWord = transcript.replace(/^(add|create|schedule|make|please|mujhe)\s+/i, "");
+      const words = cleanWord.split(/\s+/).filter(w => w.trim().length > 0).slice(0, 4);
+      if (words.length > 0) {
+        tTitle = words.join(" ");
+        tTitle = tTitle.charAt(0).toUpperCase() + tTitle.slice(1);
+      }
+    }
+
+    return {
+      success: true,
+      task: {
+        title: tTitle,
+        description: tDesc,
+        category: tCategory,
+        priority: tPriority,
+        estimatedHours: tHours,
+        deadline: tDeadline,
+        subtasks: subtaskLines.map(line => ({ title: line }))
+      }
+    };
+  };
+
   const processVoiceTask = async (text: string) => {
     if (!text.trim()) return;
     setIsProcessingVoice(true);
@@ -138,7 +229,15 @@ export default function DeadlinesList({
           clientDate: new Date().toISOString().split('T')[0]
         })
       });
-      const data = await response.json();
+
+      let data;
+      if (!response.ok) {
+        console.warn(`Server voice endpoint failed with status ${response.status}. Falling back to client-side voice task parser.`);
+        data = localParseVoiceTask(text);
+      } else {
+        data = await response.json();
+      }
+
       if (data.success && data.task) {
         const tTitle = data.task.title || "Voice Task";
         const tDesc = data.task.description || "Created from voice transcript.";
@@ -200,8 +299,71 @@ export default function DeadlinesList({
         setVoiceError("Failed to parse your voice. Please try again with clear words.");
       }
     } catch (err: any) {
-      console.error(err);
-      setVoiceError("Connection issue while parsing voice task.");
+      console.warn("Connection issue during voice task parsing. Falling back to local client-side parser.", err);
+      try {
+        const data = localParseVoiceTask(text);
+        if (data.success && data.task) {
+          const tTitle = data.task.title || "Voice Task";
+          const tDesc = data.task.description || "Created from voice transcript.";
+          const tCategory = data.task.category || "Work";
+          const tPriority = data.task.priority || "medium";
+          const tHours = Number(data.task.estimatedHours) || 2;
+          const tDeadline = data.task.deadline || "2026-06-25";
+          
+          let subtaskLines: string[] = [];
+          if (data.task.subtasks && Array.isArray(data.task.subtasks)) {
+            subtaskLines = data.task.subtasks.map((s: any) => s.title);
+          } else {
+            subtaskLines = ["Draft first outline", "Complete implementation tests"];
+          }
+
+          if (autoSubmitVoice) {
+            const subs: SubTask[] = subtaskLines.map((line) => ({
+              id: `manual-sub-${Math.random()}`,
+              title: line,
+              estimatedMinutes: Math.round((tHours * 60) / Math.max(subtaskLines.length, 1)),
+              completed: false
+            }));
+
+            const newTask: Task = {
+              id: `manual-task-${Date.now()}`,
+              title: tTitle,
+              description: tDesc,
+              originalDeadline: tDeadline,
+              priority: tPriority as any,
+              estimatedHours: tHours,
+              status: "backlog",
+              category: tCategory,
+              subtasks: subs
+            };
+
+            onAddTask(newTask);
+            setSelectedDateStr(tDeadline);
+            
+            const parsedDate = new Date(tDeadline + 'T00:00:00');
+            if (!isNaN(parsedDate.getTime())) {
+              setCurrentYear(parsedDate.getFullYear());
+              setCurrentMonth(parsedDate.getMonth());
+            }
+
+            setVoiceTranscript(`✅ Scheduled: "${tTitle}" on ${tDeadline}!`);
+            setTitle("");
+            setDescription("");
+            setRawSubtasks("");
+          } else {
+            setTitle(tTitle);
+            setDescription(tDesc);
+            setCategory(tCategory);
+            setPriority(tPriority || "medium");
+            setHours(tHours);
+            setDeadline(tDeadline);
+            setRawSubtasks(subtaskLines.join("\n"));
+          }
+        }
+      } catch (fallbackErr: any) {
+        console.error("Local voice task parser also failed:", fallbackErr);
+        setVoiceError("Connection issue while parsing voice task.");
+      }
     } finally {
       setIsProcessingVoice(false);
     }
