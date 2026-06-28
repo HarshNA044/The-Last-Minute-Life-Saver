@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { KeyRound, Mail, User, ShieldCheck, ArrowRight, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { KeyRound, Mail, User, Hourglass, ArrowRight, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
@@ -182,11 +182,11 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
     isDark ? 'border-neutral-800 bg-neutral-900/80 text-neutral-100' : 'border-slate-200/80 bg-white/90 text-slate-800'
   } shadow-xl flex flex-col relative overflow-hidden backdrop-blur-md`;
 
-  const inputClass = `block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-150 ${
+  const inputClass = `block w-full pl-10 pr-4 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-150 ${
     isDark ? 'border-neutral-800 bg-neutral-950/50 text-neutral-100 placeholder:text-neutral-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400'
   }`;
 
-  const inputPassClass = `block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-150 ${
+  const inputPassClass = `block w-full pl-10 pr-10 py-3 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-150 ${
     isDark ? 'border-neutral-800 bg-neutral-950/50 text-neutral-100 placeholder:text-neutral-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400'
   }`;
 
@@ -212,7 +212,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
     <div className={containerClass}>
       
       {/* Decorative Top Accent Card */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-rose-500 to-sky-500" />
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-500" />
 
       {/* Main Authentication Box Card */}
       <motion.div 
@@ -223,8 +223,8 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       >
         {/* Brand Banner Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20 shadow-inner">
-            <ShieldCheck className="w-6 h-6 animate-pulse" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 mb-4 border border-purple-500/20 shadow-inner">
+            <Hourglass className="w-6 h-6 animate-pulse" />
           </div>
           <h2 className={titleClass}>
             {mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -258,7 +258,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
               exit={{ opacity: 0 }}
               className="mb-5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs flex items-center gap-2.5"
             >
-              <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+              <Hourglass className="w-4 h-4 shrink-0 text-emerald-400" />
               <span>{successMsg}</span>
             </motion.div>
           )}
@@ -313,7 +313,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-950 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-white bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-purple-500/20"
             >
               {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -390,7 +390,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-slate-955 bg-amber-500 hover:bg-amber-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-amber-500/10 text-slate-950"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-white bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 font-sans text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors shadow-lg shadow-purple-500/20"
             >
               {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -411,7 +411,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
           </span>
           <button
             onClick={() => handleToggleMode(mode === 'login' ? 'signup' : 'login')}
-            className="font-mono text-amber-500 hover:text-amber-400 cursor-pointer font-medium"
+            className="font-mono text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 cursor-pointer font-semibold transition-colors duration-150"
           >
             {mode === 'login' ? 'Sign Up' : 'Sign In'}
           </button>
