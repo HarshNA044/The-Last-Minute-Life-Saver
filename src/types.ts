@@ -19,6 +19,7 @@ export interface Task {
   description: string;
   subtasks: SubTask[];
   category?: string;
+  tags?: string[];
 }
 
 export type BlockType = 'focus' | 'break' | 'class' | 'sleep' | 'personal';

@@ -46,6 +46,29 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
     resetState();
   };
 
+  const saveUserLocally = (emailStr: string, nameStr: string, hashStr: string) => {
+    try {
+      const saved = localStorage.getItem('life_saver_local_users');
+      const localUsers = saved ? JSON.parse(saved) : [];
+      const filtered = localUsers.filter((u: any) => u.email.toLowerCase() !== emailStr.toLowerCase());
+      filtered.push({ email: emailStr.toLowerCase(), displayName: nameStr, passwordHash: hashStr });
+      localStorage.setItem('life_saver_local_users', JSON.stringify(filtered));
+    } catch (e) {
+      console.warn("Could not save user locally:", e);
+    }
+  };
+
+  const findLocalUser = (emailStr: string) => {
+    try {
+      const saved = localStorage.getItem('life_saver_local_users');
+      if (!saved) return null;
+      const localUsers = JSON.parse(saved);
+      return localUsers.find((u: any) => u.email.toLowerCase() === emailStr.toLowerCase()) || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -53,16 +76,13 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setError('Please check your internet connection. Authentication requires an active network.');
-      return;
-    }
-    
     setLoading(true);
     setError('');
     
+    const emailLower = email.trim().toLowerCase();
+    const inputHash = await hashPassword(password);
+
     try {
-      const emailLower = email.trim().toLowerCase();
       const userRef = doc(db, 'users', emailLower);
       let userSnap;
       try {
@@ -81,7 +101,6 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       }
       
       const userData = userSnap.data();
-      const inputHash = await hashPassword(password);
       
       if (userData.passwordHash !== inputHash) {
         setError('Incorrect password. Please try again.');
@@ -89,14 +108,41 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         return;
       }
       
-      // Success
+      // Success online
+      saveUserLocally(userData.email, userData.displayName || 'Life Saver', userData.passwordHash);
       onAuthenticated({
         email: userData.email,
         displayName: userData.displayName || 'Life Saver'
       });
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Authentication failed. Please check network connections.');
+      console.warn("Authentication online check failed, trying offline validation:", err);
+      const isOfflineError = 
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err.message?.toLowerCase().includes('offline') ||
+        err.message?.toLowerCase().includes('network') ||
+        err.code === 'unavailable' ||
+        err.message?.toLowerCase().includes('failed to get document');
+
+      if (isOfflineError) {
+        const localUser = findLocalUser(emailLower);
+        if (localUser) {
+          if (localUser.passwordHash === inputHash) {
+            setSuccessMsg('Offline workspace verified successfully!');
+            setTimeout(() => {
+              onAuthenticated({
+                email: localUser.email,
+                displayName: localUser.displayName
+              });
+            }, 1000);
+          } else {
+            setError('Incorrect password (offline verification).');
+          }
+        } else {
+          setError('Failed to contact secure server and no local backup profile exists for this email. Click the purple button below to enter as a guest.');
+        }
+      } else {
+        setError(err.message || 'Authentication failed. Please check network connections.');
+      }
     } finally {
       setLoading(false);
     }
@@ -113,16 +159,13 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
       return;
     }
     
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setError('Please check your internet connection. Authentication requires an active network.');
-      return;
-    }
-    
     setLoading(true);
     setError('');
     
+    const emailLower = email.trim().toLowerCase();
+    const passHash = await hashPassword(password);
+
     try {
-      const emailLower = email.trim().toLowerCase();
       const userRef = doc(db, 'users', emailLower);
       let userSnap;
       try {
@@ -140,8 +183,6 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         return;
       }
       
-      const passHash = await hashPassword(password);
-      
       // Save secure user entry in Firestore
       try {
         await setDoc(userRef, {
@@ -157,6 +198,7 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         throw setErr;
       }
       
+      saveUserLocally(emailLower, displayName.trim(), passHash);
       setSuccessMsg('Account registered successfully! Welcome.');
       setTimeout(() => {
         onAuthenticated({
@@ -165,8 +207,31 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
         });
       }, 1000);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to create account.');
+      console.warn("Signup online connection failed, registering offline resilient profile:", err);
+      const isOfflineError = 
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err.message?.toLowerCase().includes('offline') ||
+        err.message?.toLowerCase().includes('network') ||
+        err.code === 'unavailable' ||
+        err.message?.toLowerCase().includes('failed to get document');
+
+      if (isOfflineError) {
+        const localUserExists = findLocalUser(emailLower);
+        if (localUserExists) {
+          setError('An account with this email already exists in local backup.');
+        } else {
+          saveUserLocally(emailLower, displayName.trim(), passHash);
+          setSuccessMsg('Offline workspace profile registered! Welcome.');
+          setTimeout(() => {
+            onAuthenticated({
+              email: emailLower,
+              displayName: displayName.trim()
+            });
+          }, 1000);
+        }
+      } else {
+        setError(err.message || 'Failed to create account.');
+      }
     } finally {
       setLoading(false);
     }
@@ -244,10 +309,26 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mb-5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 text-xs flex items-center gap-2.5"
+              className="mb-5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 text-xs flex flex-col gap-2"
             >
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-              <span>{error}</span>
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{error}</span>
+              </div>
+              {(error.toLowerCase().includes('offline') || error.toLowerCase().includes('network') || error.toLowerCase().includes('failed to get document') || error.toLowerCase().includes('internet')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAuthenticated({
+                      email: 'offline-user@lifesaver.local',
+                      displayName: 'Offline Champion'
+                    });
+                  }}
+                  className="mt-1.5 self-start px-2.5 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-white font-mono text-[10px] font-semibold cursor-pointer transition-colors duration-150"
+                >
+                  ⚡ ENTER OFFLINE RESILIENT WORKSPACE
+                </button>
+              )}
             </motion.div>
           )}
 
@@ -323,6 +404,29 @@ export default function AuthGateway({ onAuthenticated, theme }: AuthGatewayProps
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
+            </button>
+
+            <div className="relative flex py-2 items-center">
+              <div className={`flex-grow border-t ${isDark ? 'border-neutral-800' : 'border-slate-200'}`}></div>
+              <span className={`flex-shrink mx-4 text-[9px] font-mono uppercase tracking-wider ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Or Quick Entry</span>
+              <div className={`flex-grow border-t ${isDark ? 'border-neutral-800' : 'border-slate-200'}`}></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                onAuthenticated({
+                  email: 'offline-user@lifesaver.local',
+                  displayName: 'Guest Scholar'
+                });
+              }}
+              className={`w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold cursor-pointer border border-dashed transition-all duration-150 ${
+                isDark 
+                  ? 'border-purple-500/30 hover:border-purple-500/60 bg-purple-500/5 hover:bg-purple-500/10 text-purple-400 hover:text-purple-300' 
+                  : 'border-purple-400/45 hover:border-purple-500 bg-purple-50 hover:bg-purple-100 text-purple-700'
+              }`}
+            >
+              ⚡ Instant Guest / Dummy Login
             </button>
           </form>
         )}

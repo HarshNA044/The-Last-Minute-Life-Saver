@@ -47,6 +47,7 @@ const INITIAL_TASKS: Task[] = [
     estimatedHours: 5,
     category: "Computer Science",
     status: "backlog",
+    tags: ["Project", "Research"],
     subtasks: [
       { id: "sub-1-1", title: "Complete thread sleep & yield implementations", estimatedMinutes: 90, completed: false },
       { id: "sub-1-2", title: "Debug mutual exclusion lock deadlock conditions", estimatedMinutes: 120, completed: false },
@@ -62,6 +63,7 @@ const INITIAL_TASKS: Task[] = [
     estimatedHours: 3.5,
     category: "Mathematics",
     status: "backlog",
+    tags: ["Exam"],
     subtasks: [
       { id: "sub-2-1", title: "Review polar volume converters formulas", estimatedMinutes: 60, completed: true },
       { id: "sub-2-2", title: "Resolve past year calculus midterm papers", estimatedMinutes: 120, completed: false },
@@ -504,6 +506,12 @@ export default function App() {
 
   // Helper to fetch user's saved data from Firestore
   const fetchUserData = useCallback(async (userEmail: string) => {
+    if (userEmail.toLowerCase().includes('offline-user') || userEmail.toLowerCase().includes('local')) {
+      addSystemLog("Resilient local workspace initialized successfully.", "info");
+      initialLoadCompleted.current = true;
+      return;
+    }
+
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       addSystemLog("Offline: running on local backup workspace.", "info");
       initialLoadCompleted.current = true;
@@ -592,6 +600,9 @@ export default function App() {
   useEffect(() => {
     if (firebaseError) return;
     if (user && initialLoadCompleted.current) {
+      if (user.email.toLowerCase().includes('offline-user') || user.email.toLowerCase().includes('local')) {
+        return; // Skip saving to cloud for offline resilient profiles
+      }
       const saveToFirestore = async () => {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           return; // Skip saving to cloud while offline to prevent persistent offline errors

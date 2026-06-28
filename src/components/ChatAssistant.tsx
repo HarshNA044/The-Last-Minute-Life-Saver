@@ -106,12 +106,87 @@ export default function ChatAssistant({
 
     const valClean = textToSend.toLowerCase().trim();
     let handledLocally = false;
+    let addedTaskTitle: string | null = null;
+    let deletedTaskTitle: string | null = null;
 
-    // Check if user spoke/typed addition request
-    if (valClean.startsWith("add task ") || valClean.startsWith("create task ")) {
-      const titlePart = textToSend.replace(/^(add task|create task)\s+/i, "").trim();
-      if (titlePart && onAddTask) {
-        const capitalizedTitle = titlePart.charAt(0).toUpperCase() + titlePart.slice(1);
+    // --- ROBUST NLP PARSING ---
+    // 1. Check for DELETE requests first
+    const deleteKeywords = ["delete", "remove", "discard", "cancel", "clear", "get rid of", "erase", "trash", "remove task", "delete task"];
+    let isDeleteRequest = false;
+    let extractedDeleteTitle = "";
+
+    for (const kw of deleteKeywords) {
+      if (valClean.includes(kw)) {
+        const index = valClean.indexOf(kw);
+        // Get raw text from the user input after the keyword
+        const rawTarget = textToSend.substring(index + kw.length).trim();
+        // Clean up common noise words
+        const cleanedTarget = rawTarget
+          .replace(/^(?:the\s+)?(?:task|todo|assignment|milestone|project)?\s*(?:called|named)?\s*/i, "")
+          .trim();
+        const strippedTarget = cleanedTarget.replace(/^["']|["']$/g, "").trim();
+        
+        if (strippedTarget && strippedTarget.length > 1) {
+          isDeleteRequest = true;
+          extractedDeleteTitle = strippedTarget;
+          break;
+        }
+      }
+    }
+
+    if (isDeleteRequest && extractedDeleteTitle && onDeleteTask) {
+      const found = currentTasks.find(t => 
+        t.title.toLowerCase().includes(extractedDeleteTitle.toLowerCase()) || 
+        extractedDeleteTitle.toLowerCase().includes(t.title.toLowerCase())
+      );
+      if (found) {
+        onDeleteTask(found.id);
+        handledLocally = true;
+        deletedTaskTitle = found.title;
+      }
+    }
+
+    // 2. Check for ADD requests (if not already handled as delete)
+    if (!handledLocally) {
+      const addKeywords = ["add task", "create task", "add todo", "create todo", "add a task", "create a task", "add a new task", "create a new task", "add", "create", "schedule", "insert", "make", "new task", "plan"];
+      let isAddRequest = false;
+      let extractedAddTitle = "";
+
+      for (const kw of addKeywords) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        const match = textToSend.match(regex);
+        if (match && match.index !== undefined) {
+          const rawTarget = textToSend.substring(match.index + match[0].length).trim();
+          // Clean up noise words
+          const cleanedTarget = rawTarget
+            .replace(/^(?:a\s+)?(?:new\s+)?(?:task|todo|assignment|milestone|project)?\s*(?:called|named|to|for)?\s*/i, "")
+            .trim();
+          const strippedTarget = cleanedTarget.replace(/^["']|["']$/g, "").trim();
+
+          // Reject matches if stripped target is a command keyword like "task", "todo", "pomodoro"
+          const lower = strippedTarget.toLowerCase();
+          if (
+            strippedTarget &&
+            strippedTarget.length > 1 &&
+            lower !== "task" &&
+            lower !== "todo" &&
+            !lower.startsWith("blocking") &&
+            !lower.includes("pomodoro") &&
+            !lower.includes("frog") &&
+            !lower.includes("technique") &&
+            !lower.includes("guide") &&
+            !lower.includes("strategy") &&
+            !lower.includes("how to")
+          ) {
+            isAddRequest = true;
+            extractedAddTitle = strippedTarget;
+            break;
+          }
+        }
+      }
+
+      if (isAddRequest && extractedAddTitle && onAddTask) {
+        const capitalizedTitle = extractedAddTitle.charAt(0).toUpperCase() + extractedAddTitle.slice(1);
         const newTask: Task = {
           id: 'task-' + Math.random().toString(36).substring(2, 9),
           title: capitalizedTitle,
@@ -120,23 +195,30 @@ export default function ChatAssistant({
           estimatedHours: 2,
           status: 'backlog',
           description: 'Added via chat companion command.',
-          subtasks: [] // STRICT RULE: No subtasks automatically created!
+          subtasks: []
         };
         onAddTask(newTask);
         handledLocally = true;
+        addedTaskTitle = capitalizedTitle;
       }
     }
 
-    // Check if user spoke/typed deletion request
-    if (valClean.startsWith("delete task ") || valClean.startsWith("remove task ")) {
-      const searchPart = textToSend.replace(/^(delete task|remove task)\s+/i, "").trim();
-      if (searchPart && onDeleteTask) {
-        const found = currentTasks.find(t => t.title.toLowerCase().includes(searchPart.toLowerCase()));
-        if (found) {
-          onDeleteTask(found.id);
-          handledLocally = true;
-        }
-      }
+    // Prepare updated tasks state to send to Gemini/Express API so backend is fully synchronized
+    let updatedTasks = [...currentTasks];
+    if (addedTaskTitle) {
+      const addedTaskMock: Task = {
+        id: 'temp-id',
+        title: addedTaskTitle,
+        originalDeadline: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+        priority: 'medium',
+        estimatedHours: 2,
+        status: 'backlog',
+        description: 'Added via chat companion command.',
+        subtasks: []
+      };
+      updatedTasks = [addedTaskMock, ...updatedTasks];
+    } else if (deletedTaskTitle) {
+      updatedTasks = updatedTasks.filter(t => t.title !== deletedTaskTitle);
     }
 
     // Intercept optimization commands
@@ -153,7 +235,7 @@ export default function ChatAssistant({
         body: JSON.stringify({
           message: textToSend,
           history: messages.slice(-6).map(m => ({ role: m.role, text: m.text })),
-          currentTasksState: currentTasks
+          currentTasksState: updatedTasks
         })
       });
 
@@ -161,10 +243,17 @@ export default function ChatAssistant({
 
       const data = await resp.json();
       if (data.success) {
+        let replyText = data.text;
+        if (addedTaskTitle) {
+          replyText = `🚀 **Task Added Successfully!** I've added **"${addedTaskTitle}"** to your backlog.\n\n` + replyText;
+        } else if (deletedTaskTitle) {
+          replyText = `🗑️ **Task Discarded Successfully!** I've removed **"${deletedTaskTitle}"** from your agenda.\n\n` + replyText;
+        }
+
         setMessages(prev => [...prev, {
           id: Math.random().toString(),
           role: 'assistant',
-          text: data.text,
+          text: replyText,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           suggestions: data.suggestions
         }]);
@@ -205,15 +294,22 @@ export default function ChatAssistant({
     } catch (err: any) {
       console.warn("Using offline fallback rule for chat.", err);
       setTimeout(() => {
-        let reply = "I am actively monitoring your agenda! ";
-        if (valClean.includes("pomodoro")) {
-          reply += "The **Pomodoro Technique** is a time management method where you work for 25 minutes followed by a 5-minute break. This prevents mental fatigue and maintains peak performance!";
-        } else if (valClean.includes("frog")) {
-          reply += "The **Eat the Frog** strategy means tackling your most important, difficult task first thing in the morning when your concentration battery is full!";
-        } else if (valClean.includes("block")) {
-          reply += "**Time Blocking** is when you assign explicit focus slots in your calendar for specific tasks, turning a passive to-do list into an active deadline-defense plan.";
+        let reply = "";
+        if (addedTaskTitle) {
+          reply = `🚀 **Task Added Successfully!** I've added **"${addedTaskTitle}"** to your backlog board without any extra subtasks.\n\nFor best time management, try the **Feynman Technique** or **Time Blocking** to conquer this efficiently!`;
+        } else if (deletedTaskTitle) {
+          reply = `🗑️ **Task Discarded Successfully!** I've removed **"${deletedTaskTitle}"** from your agenda list.\n\nKeeping your desk clean is the first step to beating procrastination!`;
         } else {
-          reply += "I recommend setting up a 45-minute focus session tonight. Click **Lock in Focus Blocks** to organize empty calendar spots instantly!";
+          reply = "I am actively monitoring your agenda! ";
+          if (valClean.includes("pomodoro")) {
+            reply += "The **Pomodoro Technique** is a time management method where you work for 25 minutes followed by a 5-minute break. This prevents mental fatigue and maintains peak performance!";
+          } else if (valClean.includes("frog")) {
+            reply += "The **Eat the Frog** strategy means tackling your most important, difficult task first thing in the morning when your concentration battery is full!";
+          } else if (valClean.includes("block")) {
+            reply += "**Time Blocking** is when you assign explicit focus slots in your calendar for specific tasks, turning a passive to-do list into an active deadline-defense plan.";
+          } else {
+            reply += "I recommend setting up a 45-minute focus session tonight. Click **Lock in Focus Blocks** to organize empty calendar spots instantly!";
+          }
         }
 
         setMessages(prev => [...prev, {
@@ -221,7 +317,7 @@ export default function ChatAssistant({
           role: 'assistant',
           text: reply,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          suggestions: ["Lock in Study Sessions", "Show techniques", "Help me schedule"]
+          suggestions: addedTaskTitle ? ["Set due date", "Re-optimize week"] : ["Lock in Study Sessions", "Show techniques", "Help me schedule"]
         }]);
       }, 1200);
     } finally {

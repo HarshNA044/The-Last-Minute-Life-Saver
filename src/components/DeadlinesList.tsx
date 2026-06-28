@@ -22,7 +22,9 @@ import {
   SlidersHorizontal,
   Mic,
   MicOff,
-  Loader2
+  Loader2,
+  Search,
+  CalendarClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, TaskPriority, TaskStatus, SubTask } from '../types';
@@ -47,7 +49,7 @@ export default function DeadlinesList({
   onSelectDate
 }: DeadlinesListProps) {
   // Navigation & View Mode states
-  const [viewMode, setViewMode] = useState<'daywise' | 'monthwise'>('daywise');
+  const [viewMode, setViewMode] = useState<'daywise' | 'monthwise' | 'timeline'>('daywise');
   const setSelectedDateStr = onSelectDate;
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,7 @@ export default function DeadlinesList({
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState<string>('all');
 
   // Manual Form States
   const [title, setTitle] = useState("");
@@ -105,6 +108,13 @@ export default function DeadlinesList({
   const [deadline, setDeadline] = useState(getTodayOffsetStr(0));
   const [category, setCategory] = useState("Work");
   const [rawSubtasks, setRawSubtasks] = useState("Draft first outline\nComplete implementation tests");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customTagsInput, setCustomTagsInput] = useState("");
+
+  // Timeline View states
+  const [timelineSearch, setTimelineSearch] = useState("");
+  const [inlineAddDate, setInlineAddDate] = useState<string | null>(null);
+  const [inlineAddTitle, setInlineAddTitle] = useState("");
 
   // Voice input states
   const [isListening, setIsListening] = useState(false);
@@ -330,6 +340,9 @@ export default function DeadlinesList({
   // Extract unique categories from tasks for filter dropdown
   const uniqueCategories = ['all', ...Array.from(new Set(tasks.map(t => t.category).filter(Boolean)))];
 
+  // Extract unique tags from tasks for filter dropdown
+  const uniqueTags = ['all', ...Array.from(new Set(tasks.flatMap(t => t.tags || []).filter(Boolean)))];
+
   // Map of priority badges colors
   const getPriorityBadge = (p: TaskPriority) => {
     const presets = {
@@ -442,6 +455,13 @@ export default function DeadlinesList({
         return false;
       }
 
+      // 5. Tag check
+      if (filterTag !== 'all') {
+        if (!task.tags || !task.tags.some(tag => tag.toLowerCase() === filterTag.toLowerCase())) {
+          return false;
+        }
+      }
+
       return true;
     });
   };
@@ -515,6 +535,98 @@ export default function DeadlinesList({
   };
   const sortedActiveDayTasks = [...activeDayTasks].sort((a, b) => priorityWeights[b.priority] - priorityWeights[a.priority]);
 
+  // Timeline View Helper Functions
+  const getRelativeDayStr = (dateStr: string) => {
+    const todayStr = getTodayOffsetStr(0);
+    if (dateStr === todayStr) return "Today";
+    const tomStr = getTodayOffsetStr(1);
+    if (dateStr === tomStr) return "Tomorrow";
+    const yestStr = getTodayOffsetStr(-1);
+    if (dateStr === yestStr) return "Yesterday";
+
+    try {
+      const diffTime = new Date(dateStr + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        return `In ${diffDays} days`;
+      } else {
+        return `${Math.abs(diffDays)} days ago`;
+      }
+    } catch {
+      return "";
+    }
+  };
+
+  const getTimelineGroups = () => {
+    let filtered = getFilteredTasks(tasks);
+
+    if (timelineSearch.trim()) {
+      const q = timelineSearch.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.title.toLowerCase().includes(q) || 
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q))) ||
+        (t.category && t.category.toLowerCase().includes(q))
+      );
+    }
+
+    const sorted = [...filtered].sort((a, b) => {
+      const dateA = getNormalizedDate(a.originalDeadline);
+      const dateB = getNormalizedDate(b.originalDeadline);
+      return dateA.localeCompare(dateB);
+    });
+
+    const groups: Record<string, Task[]> = {};
+    sorted.forEach(task => {
+      const dateStr = getNormalizedDate(task.originalDeadline);
+      if (!groups[dateStr]) {
+        groups[dateStr] = [];
+      }
+      groups[dateStr].push(task);
+    });
+
+    return Object.keys(groups).map(dateStr => ({
+      dateStr,
+      tasks: groups[dateStr].sort((a, b) => priorityWeights[b.priority] - priorityWeights[a.priority])
+    }));
+  };
+
+  const handleRescheduleTask = (task: Task, daysOffset: number) => {
+    const currentDateStr = getNormalizedDate(task.originalDeadline);
+    const d = new Date(currentDateStr + 'T00:00:00');
+    d.setDate(d.getDate() + daysOffset);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    const newDeadlineStr = `${y}-${m}-${day}`;
+
+    const updatedTask: Task = {
+      ...task,
+      id: `manual-task-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      originalDeadline: newDeadlineStr
+    };
+
+    onAddTask(updatedTask);
+    onDeleteTask(task.id);
+  };
+
+  const handleTimelineInlineAdd = (dateStr: string, titleText: string) => {
+    if (!titleText.trim()) return;
+    const newTask: Task = {
+      id: `manual-task-${Date.now()}`,
+      title: titleText.trim(),
+      description: "Quick task scheduled directly on the Timeline.",
+      originalDeadline: dateStr,
+      priority: "medium",
+      estimatedHours: 1,
+      status: "backlog",
+      subtasks: [],
+      category: "Work",
+      tags: []
+    };
+    onAddTask(newTask);
+  };
+
   // Submit manual task form handler
   const handleAddTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -531,6 +643,13 @@ export default function DeadlinesList({
         completed: false
       }));
 
+    // Process tags
+    const parsedCustomTags = customTagsInput
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+    const combinedTags = Array.from(new Set([...selectedTags, ...parsedCustomTags]));
+
     const newTask: Task = {
       id: `manual-task-${Date.now()}`,
       title,
@@ -540,6 +659,7 @@ export default function DeadlinesList({
       estimatedHours: hours,
       status: "backlog",
       category,
+      tags: combinedTags,
       subtasks: subs
     };
 
@@ -559,6 +679,8 @@ export default function DeadlinesList({
     setTitle("");
     setDescription("");
     setRawSubtasks("Draft first outline\nComplete implementation tests");
+    setSelectedTags([]);
+    setCustomTagsInput("");
     setShowAddForm(false);
   };
 
@@ -567,9 +689,10 @@ export default function DeadlinesList({
     setFilterPriority('all');
     setFilterStatus('all');
     setFilterCategory('all');
+    setFilterTag('all');
   };
 
-  const isFiltersActive = filterPriority !== 'all' || filterStatus !== 'all' || filterCategory !== 'all';
+  const isFiltersActive = filterPriority !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterTag !== 'all';
 
   return (
     <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 md:p-6 flex flex-col gap-6" id="calendar-deadlines-container">
@@ -757,6 +880,48 @@ export default function DeadlinesList({
             </div>
 
             <div>
+              <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1.5">
+                Task Tags / Labels (e.g. Project, Exam, Research)
+              </label>
+              
+              {/* Preset tags chips */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {['Project', 'Exam', 'Research', 'Homework', 'Reading'].map(tag => {
+                  const isSelected = selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTags(selectedTags.filter(t => t !== tag));
+                        } else {
+                          setSelectedTags([...selectedTags, tag]);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-mono border transition-all duration-150 cursor-pointer ${
+                        isSelected
+                          ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 font-medium'
+                          : 'bg-neutral-950 border-neutral-850 text-neutral-500 hover:text-neutral-300'
+                      }`}
+                    >
+                      {isSelected ? '✓' : '+'} {tag}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom tags input */}
+              <input
+                type="text"
+                placeholder="Or type custom tags (separated by commas, e.g. Lab, Revision, Design)..."
+                value={customTagsInput}
+                onChange={(e) => setCustomTagsInput(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700"
+              />
+            </div>
+
+            <div>
               <label className="block text-[10px] font-mono text-neutral-500 uppercase mb-1">
                 Subtasks / Steps (One per line)
               </label>
@@ -818,6 +983,18 @@ export default function DeadlinesList({
                 <Calendar className="w-3.5 h-3.5" />
                 Monthwise View
               </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('timeline')}
+                className={`px-4 py-1.5 text-xs font-mono font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === 'timeline'
+                    ? 'bg-emerald-600 text-white shadow-md font-semibold'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                Timeline View
+              </button>
             </div>
 
             {/* Quick stats label */}
@@ -849,7 +1026,7 @@ export default function DeadlinesList({
                 className="overflow-hidden bg-neutral-950/40 rounded-xl border border-neutral-850/80 p-3 space-y-3"
                 id="tasks-filter-drawer"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Category Filter */}
                   <div>
                     <label className="block text-[9px] font-mono text-neutral-500 uppercase mb-1 flex items-center gap-1">
@@ -904,6 +1081,25 @@ export default function DeadlinesList({
                       <option value="scheduled">Scheduled</option>
                       <option value="working">Working</option>
                       <option value="completed">Completed</option>
+                    </select>
+                  </div>
+
+                  {/* Tag / Label Filter */}
+                  <div>
+                    <label className="block text-[9px] font-mono text-neutral-500 uppercase mb-1 flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-purple-400" />
+                      Tag / Label Filter
+                    </label>
+                    <select
+                      value={filterTag}
+                      onChange={(e) => setFilterTag(e.target.value)}
+                      className="w-full text-xs p-1.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 focus:outline-none"
+                    >
+                      {uniqueTags.map(tag => (
+                        <option key={tag} value={tag}>
+                          {tag === 'all' ? 'All Tags / Labels' : `#${tag}`}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1187,11 +1383,337 @@ export default function DeadlinesList({
               </div>
             </div>
           )}
+
+          {/* TIMELINE VIEW SELECTOR / TRACK */}
+          {viewMode === 'timeline' && (
+            <div className="space-y-4 animate-fadeIn w-full overflow-hidden" id="timeline-selector-block">
+              {/* Timeline Header and Search Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-950 p-4 rounded-xl border border-neutral-850">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <CalendarClock className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <span className="text-sm font-bold font-sans text-neutral-200">
+                      Chronological Timeline Axis
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wide">
+                    Visually organize upcoming milestones, track steps, and adjust workloads
+                  </p>
+                </div>
+
+                {/* Timeline Search Input */}
+                <div className="relative w-full md:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
+                  <input
+                    type="text"
+                    value={timelineSearch}
+                    onChange={(e) => setTimelineSearch(e.target.value)}
+                    placeholder="Search titles, tags, categories..."
+                    className="w-full text-xs pl-9 pr-8 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
+                  />
+                  {timelineSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTimelineSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Horizontal Conveyor Track */}
+              <div className="w-full overflow-hidden border border-neutral-850/60 bg-neutral-950/20 rounded-2xl p-4 relative">
+                {/* Horizontal flow track line accent */}
+                <div className="absolute top-[52px] left-8 right-8 h-0.5 bg-neutral-850/40 z-0 pointer-events-none" />
+
+                {getTimelineGroups().length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle2 className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
+                    <h4 className="font-sans text-sm text-neutral-400 font-medium">
+                      No matching timeline deadlines.
+                    </h4>
+                    <p className="text-[11px] text-neutral-500 mt-1 max-w-sm mx-auto">
+                      Adjust your filters above, clear your search query, or use the form to schedule new deliverables.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex gap-4 sm:gap-6 overflow-x-auto w-full max-w-full pb-4 pt-2 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent snap-x relative z-10">
+                    {getTimelineGroups().map((group) => {
+                      const relativeDayLabel = getRelativeDayStr(group.dateStr);
+                      const isToday = relativeDayLabel === "Today";
+                      const dateObj = new Date(group.dateStr + 'T00:00:00');
+                      const formattedDate = dateObj.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
+
+                      const isAddingInline = inlineAddDate === group.dateStr;
+
+                      return (
+                        <div
+                          key={group.dateStr}
+                          className={`flex-shrink-0 w-[280px] sm:w-80 bg-neutral-950/90 border rounded-2xl p-4 flex flex-col gap-3 snap-start transition-all relative ${
+                            isToday
+                              ? 'border-emerald-500/40 shadow-lg shadow-emerald-500/5 bg-neutral-950/95 ring-1 ring-emerald-500/20'
+                              : 'border-neutral-850/75'
+                          }`}
+                        >
+                          {/* Column Header */}
+                          <div className="flex items-center justify-between border-b border-neutral-850 pb-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-sans font-extrabold text-sm text-neutral-100">
+                                  {formattedDate.split(',')[0]}
+                                </span>
+                                {relativeDayLabel && (
+                                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                                    isToday
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                      : 'bg-neutral-900 text-neutral-400 border border-neutral-850'
+                                  }`}>
+                                    {relativeDayLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[9px] font-mono text-neutral-500">
+                                {formattedDate.split(',')[1]} • {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+
+                            {/* Inline task creator toggle */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isAddingInline) {
+                                  setInlineAddDate(null);
+                                  setInlineAddTitle("");
+                                } else {
+                                  setInlineAddDate(group.dateStr);
+                                  setInlineAddTitle("");
+                                }
+                              }}
+                              className={`p-1 rounded-lg border transition-all cursor-pointer ${
+                                isAddingInline
+                                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                  : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-850'
+                              }`}
+                              title="Quick-add task on this date"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Inline quick task form */}
+                          {isAddingInline && (
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleTimelineInlineAdd(group.dateStr, inlineAddTitle);
+                                setInlineAddDate(null);
+                                setInlineAddTitle("");
+                              }}
+                              className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 space-y-2"
+                            >
+                              <input
+                                type="text"
+                                value={inlineAddTitle}
+                                onChange={(e) => setInlineAddTitle(e.target.value)}
+                                placeholder="Enter task title..."
+                                className="w-full text-xs p-1.5 rounded bg-neutral-950 border border-neutral-850 text-neutral-200 focus:outline-none focus:border-neutral-700 font-sans"
+                                autoFocus
+                              />
+                              <div className="flex justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInlineAddDate(null);
+                                    setInlineAddTitle("");
+                                  }}
+                                  className="px-2 py-0.5 text-[9px] font-mono bg-transparent text-neutral-500 hover:text-neutral-400 cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="submit"
+                                  className="px-2.5 py-0.5 text-[9px] font-mono bg-emerald-600 text-white rounded hover:bg-emerald-500 cursor-pointer"
+                                >
+                                  Save Task
+                                </button>
+                              </div>
+                            </form>
+                          )}
+
+                          {/* Vertical Column list of tasks */}
+                          <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-900">
+                            {group.tasks.map((task) => {
+                              const totalSubs = task.subtasks.length;
+                              const completedSubs = task.subtasks.filter(s => s.completed).length;
+                              const pct = totalSubs > 0 ? Math.round((completedSubs / totalSubs) * 100) : 0;
+                              const isTaskExpanded = expandedTasks[task.id] ?? false;
+
+                              return (
+                                <div
+                                  key={task.id}
+                                  className="bg-neutral-900/60 border border-neutral-850 hover:border-neutral-750 rounded-xl p-3 space-y-2.5 transition-all hover:bg-neutral-900/80"
+                                >
+                                  {/* Task Info Row */}
+                                  <div className="flex items-start justify-between gap-1">
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap gap-1.5 items-center mb-1">
+                                        <span className={`text-[8px] font-mono border px-1.5 py-0.2 rounded uppercase tracking-wider ${getPriorityBadge(task.priority)}`}>
+                                          {task.priority}
+                                        </span>
+                                        {task.category && (
+                                          <span className="text-[8px] font-mono text-neutral-400 bg-neutral-950 border border-neutral-850 px-1.5 py-0.2 rounded flex items-center gap-0.5 uppercase">
+                                            <Tag className="w-2.5 h-2.5 text-neutral-500" />
+                                            {task.category}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <h4 className="font-sans font-bold text-xs text-neutral-200 leading-snug break-words">
+                                        {task.title}
+                                      </h4>
+                                    </div>
+
+                                    {/* Action items */}
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => onStartFocus(task.id)}
+                                        className="p-1 rounded bg-neutral-950 border border-neutral-850 text-purple-400 hover:text-purple-300 hover:bg-neutral-800 transition-colors cursor-pointer"
+                                        title="Start Focus Mode on this Task"
+                                      >
+                                        <Play className="w-3 h-3 fill-current" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onDeleteTask(task.id)}
+                                        className="p-1 rounded bg-neutral-950 border border-neutral-850 text-neutral-500 hover:text-rose-400 hover:bg-neutral-800 transition-colors cursor-pointer"
+                                        title="Delete Task"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Tags Row */}
+                                  {task.tags && task.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {task.tags.map(tag => (
+                                        <span key={tag} className="text-[8px] font-mono text-purple-400 border border-purple-500/10 bg-purple-500/5 px-1.5 py-0.2 rounded-full">
+                                          #{tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Subtasks Completion Progress Info */}
+                                  {totalSubs > 0 ? (
+                                    <div className="space-y-1.5 pt-1 border-t border-neutral-850/55">
+                                      <div className="flex items-center justify-between text-[9px] font-mono text-neutral-500">
+                                        <span>Progress: {completedSubs}/{totalSubs} steps</span>
+                                        <span className="font-bold text-neutral-400">{pct}%</span>
+                                      </div>
+                                      <div className="h-1 w-full bg-neutral-950 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full bg-gradient-to-r from-purple-500 to-cyan-400 transition-all duration-300"
+                                          style={{ width: `${pct}%` }}
+                                        />
+                                      </div>
+
+                                      {/* Mini checklist toggle */}
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedTasks(prev => ({ ...prev, [task.id]: !isTaskExpanded }))}
+                                        className="text-[8px] font-mono text-neutral-500 hover:text-neutral-400 flex items-center gap-0.5 cursor-pointer"
+                                      >
+                                        {isTaskExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                                        {isTaskExpanded ? "Hide Steps" : "Show Steps Checklist"}
+                                      </button>
+
+                                      {/* Subtasks Checklist */}
+                                      {isTaskExpanded && (
+                                        <div className="space-y-1 pl-1 pt-1.5 border-l border-neutral-800">
+                                          {task.subtasks.map((sub) => (
+                                            <label
+                                              key={sub.id}
+                                              className="flex items-start gap-1.5 text-[9px] font-sans text-neutral-400 hover:text-neutral-200 cursor-pointer select-none"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={sub.completed}
+                                                onChange={() => onToggleSubtask(task.id, sub.id)}
+                                                className="mt-0.5 w-2.5 h-2.5 rounded bg-neutral-950 border border-neutral-800 text-purple-600 focus:ring-0 focus:ring-offset-0"
+                                              />
+                                              <span className={sub.completed ? "line-through text-neutral-600" : ""}>
+                                                {sub.title}
+                                              </span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="text-[8px] font-mono text-neutral-500 italic pt-1 border-t border-neutral-850/55 flex justify-between items-center">
+                                      <span>Single checklist target</span>
+                                      <span className="text-[8px] font-mono text-purple-400">
+                                        Status: {task.status}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Reschedule Shortcuts */}
+                                  <div className="pt-2 border-t border-neutral-850/55 flex items-center justify-between gap-1.5">
+                                    <span className="text-[8px] font-mono text-neutral-500 uppercase tracking-tight">
+                                      Postpone:
+                                    </span>
+                                    <div className="flex gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRescheduleTask(task, 1)}
+                                        className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-neutral-950 border border-neutral-850 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                        title="Postpone by 1 day"
+                                      >
+                                        +1 Day
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRescheduleTask(task, 3)}
+                                        className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-neutral-950 border border-neutral-850 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                        title="Postpone by 3 days"
+                                      >
+                                        +3 Days
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRescheduleTask(task, 7)}
+                                        className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-neutral-950 border border-neutral-850 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                        title="Postpone by 1 week"
+                                      >
+                                        +1 Wk
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* FILTERED TASKS CHECKLIST (DUE ON CURRENTLY SELECTED DATE) */}
-      {!showAddForm && (
+      {!showAddForm && viewMode !== 'timeline' && (
         <div className="space-y-3.5">
           <div className="flex items-center justify-between border-t border-neutral-800/40 pt-4" id="selected-day-details-title">
             <div className="flex items-center gap-1.5 text-neutral-300">
@@ -1260,6 +1782,11 @@ export default function DeadlinesList({
                             <span className="text-[9px] font-mono text-neutral-500 flex items-center gap-1 bg-neutral-900 px-2 py-0.5 rounded-full capitalize">
                               {task.status}
                             </span>
+                            {task.tags && task.tags.length > 0 && task.tags.map((tag) => (
+                              <span key={tag} className="text-[9px] font-mono text-purple-400 border border-purple-500/20 bg-purple-500/5 px-2 py-0.5 rounded-full">
+                                #{tag}
+                              </span>
+                            ))}
                           </div>
 
                           <h3 className="font-sans font-bold text-sm text-neutral-100 leading-snug">
@@ -1291,7 +1818,7 @@ export default function DeadlinesList({
                                 cx="28"
                                 cy="28"
                                 r="24"
-                                className="stroke-amber-500 fill-none"
+                                className="stroke-purple-500 fill-none"
                                 strokeWidth="3"
                                 strokeLinecap="round"
                                 strokeDasharray={150.8}
