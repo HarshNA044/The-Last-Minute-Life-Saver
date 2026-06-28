@@ -132,129 +132,220 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
       return `${y}-${m}-${day}`;
     };
 
+    const parseDateFromString = (str: string): string | null => {
+      const strLower = str.toLowerCase();
+      
+      const regexDayMonth = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i;
+      const matchDayMonth = str.match(regexDayMonth);
+      
+      const regexMonthDay = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i;
+      const matchMonthDay = str.match(regexMonthDay);
+      
+      const regexNumeric = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/;
+      const matchNumeric = str.match(regexNumeric);
+
+      const monthsMap: Record<string, number> = {
+        january: 0, jan: 0,
+        february: 1, feb: 1,
+        march: 2, mar: 2,
+        april: 3, apr: 3,
+        may: 4,
+        june: 5, jun: 5,
+        july: 6, jul: 6,
+        august: 7, aug: 7,
+        september: 8, sep: 8, sept: 8,
+        october: 9, oct: 9,
+        november: 10, nov: 10,
+        december: 11, dec: 11
+      };
+
+      let targetDate: Date | null = null;
+      const currentYear = new Date().getFullYear();
+
+      if (matchDayMonth) {
+        const day = parseInt(matchDayMonth[1], 10);
+        const monthStr = matchDayMonth[2].toLowerCase();
+        const monthIdx = monthsMap[monthStr];
+        if (monthIdx !== undefined && day >= 1 && day <= 31) {
+          targetDate = new Date(currentYear, monthIdx, day, 12, 0, 0);
+        }
+      } else if (matchMonthDay) {
+        const monthStr = matchMonthDay[1].toLowerCase();
+        const day = parseInt(matchMonthDay[2], 10);
+        const monthIdx = monthsMap[monthStr];
+        if (monthIdx !== undefined && day >= 1 && day <= 31) {
+          targetDate = new Date(currentYear, monthIdx, day, 12, 0, 0);
+        }
+      } else if (matchNumeric) {
+        const num1 = parseInt(matchNumeric[1], 10);
+        const num2 = parseInt(matchNumeric[2], 10);
+        let year = parseInt(matchNumeric[3], 10);
+        if (year < 100) year += 2000;
+
+        if (num2 <= 12 && num1 <= 31) {
+          targetDate = new Date(year, num2 - 1, num1, 12, 0, 0);
+        } else if (num1 <= 12 && num2 <= 31) {
+          targetDate = new Date(year, num1 - 1, num2, 12, 0, 0);
+        }
+      }
+
+      if (targetDate && !isNaN(targetDate.getTime())) {
+        const y = targetDate.getFullYear();
+        const m = (targetDate.getMonth() + 1).toString().padStart(2, "0");
+        const d = targetDate.getDate().toString().padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      return null;
+    };
+
+    const parseTimeFromString = (str: string): string | null => {
+      const matchTime = str.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+      if (matchTime) {
+        const hour = matchTime[1];
+        const min = matchTime[2] || "00";
+        const ampm = matchTime[3].toUpperCase();
+        return `${hour}:${min} ${ampm}`;
+      }
+      return null;
+    };
+
     const cleanText = textContent || "";
+    // Split on newline, semicolon, bullet, vertical pipes, or period followed by space/end of line
     const lines = cleanText
-      .split(/\n|\r|;|•|\|/)
+      .split(/(?:\n|\r|;|•|\||\.(?=\s|$))/)
       .map(line => line.trim())
-      .filter(line => line.length > 5);
+      .filter(line => line.length > 3);
 
     let extractedTasks: any[] = [];
 
     for (const line of lines) {
       const lineLower = line.toLowerCase();
       
-      // Relative Date Detection for this specific line
-      let offset = 0; // default to today
-      let foundRelative = false;
       let deadlineStr = "";
+      let foundRelative = false;
 
-      // Parse yesterday
-      if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
-        offset = -1;
+      // First try to extract absolute date
+      const absoluteDate = parseDateFromString(line);
+      if (absoluteDate) {
+        deadlineStr = absoluteDate;
         foundRelative = true;
-        deadlineStr = getOffsetDateStr(-1);
-      }
-      // Parse tomorrow
-      else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
-        if (lineLower.includes("parso") || lineLower.includes("parson")) {
-          offset = 2;
-        } else {
-          offset = 1;
+      } else {
+        // Fallback to relative dates
+        if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
+          deadlineStr = getOffsetDateStr(-1);
+          foundRelative = true;
+        } else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
+          const offset = (lineLower.includes("parso") || lineLower.includes("parson")) ? 2 : 1;
+          deadlineStr = getOffsetDateStr(offset);
+          foundRelative = true;
+        } else if (lineLower.includes("today") || lineLower.includes("aaj") || lineLower.includes("now") || lineLower.includes("abhibhi")) {
+          deadlineStr = getOffsetDateStr(0);
+          foundRelative = true;
         }
-        foundRelative = true;
-        deadlineStr = getOffsetDateStr(offset);
-      }
-      // Parse today
-      else if (lineLower.includes("today") || lineLower.includes("aaj") || lineLower.includes("now") || lineLower.includes("abhibhi")) {
-        offset = 0;
-        foundRelative = true;
-        deadlineStr = getOffsetDateStr(0);
       }
 
       if (!foundRelative) {
-        // Look for days of week
         const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
         const foundDayIdx = days.findIndex(d => lineLower.includes(d));
         if (foundDayIdx !== -1) {
           const todayDay = today.getDay();
           let targetOffset = foundDayIdx - todayDay;
-          if (targetOffset <= 0) targetOffset += 7; // next week
-          offset = targetOffset;
-          deadlineStr = getOffsetDateStr(offset);
+          if (targetOffset <= 0) targetOffset += 7;
+          deadlineStr = getOffsetDateStr(targetOffset);
           foundRelative = true;
         } else {
-          // Default to a rolling deadline like 2 days from now to give realistic pacing
-          offset = 2;
-          deadlineStr = getOffsetDateStr(offset);
+          deadlineStr = getOffsetDateStr(2); // default to 2 days out
           foundRelative = true;
         }
       }
 
-      // Subject/Category Detection
-      let subject = "Academics";
-      let category = "Academics";
-      let estHours = 3;
-      let priority = "medium";
+      // Check for time details
+      const extractedTime = parseTimeFromString(line);
 
-      if (lineLower.includes("physics") || lineLower.includes("bhautik") || lineLower.includes("lab")) {
-        subject = "Physics Lab Report";
-        category = "Academics";
-        estHours = 4;
-        priority = "high";
-      } else if (lineLower.includes("math") || lineLower.includes("calculus") || lineLower.includes("ganit") || lineLower.includes("quiz")) {
-        subject = "Math Assignment";
-        category = "Academics";
-        estHours = 3;
-        priority = "critical";
-      } else if (lineLower.includes("computer") || lineLower.includes("cs") || lineLower.includes("coding") || lineLower.includes("programming") || lineLower.includes("project")) {
-        subject = "Computer Science Project";
-        category = "Project";
-        estHours = 6;
-        priority = "high";
-      } else if (lineLower.includes("marketing") || lineLower.includes("campaign") || lineLower.includes("launch")) {
-        subject = "Marketing Strategy";
-        category = "Launch";
-        estHours = 5;
-        priority = "high";
-      } else if (lineLower.includes("history") || lineLower.includes("itihas") || lineLower.includes("essay")) {
-        subject = "History Research Essay";
-        category = "Project";
-        estHours = 4;
-        priority = "medium";
-      } else if (lineLower.includes("chemistry") || lineLower.includes("chem")) {
-        subject = "Chemistry Practical";
-        category = "Academics";
-        estHours = 3;
-        priority = "medium";
-      } else if (lineLower.includes("biology") || lineLower.includes("bio")) {
-        subject = "Biology Diagram Task";
-        category = "Academics";
-        estHours = 2;
-        priority = "low";
-      } else {
-        const words = line.split(/\s+/).filter(w => w.trim().length > 0).slice(0, 4);
-        subject = words.join(" ") || "Syllabus Task";
-        subject = subject.replace(/^[-*•+\s]+/, "");
+      // Clean the title by stripping common prefixes and scheduling keywords
+      let subject = line;
+      subject = subject.replace(/^(?:i\s+have\s+to\s+go\s+in|i\s+have\s+to|i\s+need\s+to|we\s+need\s+to|please|schedule|add|create|and\s+have|have\s+an?|going\s+to)\s+/i, "");
+      subject = subject.replace(/\s+on\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i, "");
+      subject = subject.replace(/\s+on\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?\b/i, "");
+      subject = subject.replace(/\s+timing\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i, "");
+      subject = subject.replace(/\s+(?:at|on)?\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i, "");
+      subject = subject.replace(/\s+on\s+2\d{3}-\d{2}-\d{2}\b/i, "");
+      subject = subject.replace(/\s+on\s+(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i, "");
+      
+      subject = subject.trim();
+      subject = subject.replace(/^[-*•+\s]+/, "");
+      if (subject.length > 0) {
         subject = subject.charAt(0).toUpperCase() + subject.slice(1);
+      } else {
+        subject = "Syllabus Task";
       }
 
-      let formattedTitle = subject;
-      if (offset === -1) {
-        formattedTitle = `${subject} (Backlog)`;
-      } else if (offset === 0) {
-        formattedTitle = `${subject} (Due Today)`;
-      } else if (offset === 1) {
-        formattedTitle = `${subject} (Due Tomorrow)`;
-      } else if (offset === 2) {
-        formattedTitle = `${subject} (Due Day After)`;
+      // Dynamic Category & Priority & Effort Estimations
+      let category = "Academics";
+      let priority = "medium";
+      let estHours = 3;
+
+      if (lineLower.includes("wedding") || lineLower.includes("marriage") || lineLower.includes("shadi") || lineLower.includes("party")) {
+        category = "Personal";
+        priority = "high";
+        estHours = 4;
+      } else if (lineLower.includes("interview") || lineLower.includes("job") || lineLower.includes("placement")) {
+        category = "Career";
+        priority = "critical";
+        estHours = 3;
+      } else if (lineLower.includes("physics") || lineLower.includes("bhautik") || lineLower.includes("lab")) {
+        category = "Academics";
+        priority = "high";
+        estHours = 4;
+      } else if (lineLower.includes("math") || lineLower.includes("calculus") || lineLower.includes("ganit") || lineLower.includes("quiz")) {
+        category = "Academics";
+        priority = "critical";
+        estHours = 3;
+      } else if (lineLower.includes("computer") || lineLower.includes("cs") || lineLower.includes("coding") || lineLower.includes("programming") || lineLower.includes("project")) {
+        category = "Project";
+        priority = "high";
+        estHours = 6;
+      } else if (lineLower.includes("marketing") || lineLower.includes("campaign") || lineLower.includes("launch")) {
+        category = "Marketing";
+        priority = "high";
+        estHours = 5;
+      } else if (lineLower.includes("exam") || lineLower.includes("test") || lineLower.includes("quiz") || lineLower.includes("midterm") || lineLower.includes("final")) {
+        category = "Exam";
+        priority = "critical";
+        estHours = 4;
+      } else if (lineLower.includes("bill") || lineLower.includes("payment") || lineLower.includes("pay") || lineLower.includes("rent")) {
+        category = "Finance";
+        priority = "high";
+        estHours = 1;
       }
 
-      const subtasks = [
-        { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Read the syllabus and criteria details thoroughly`, completed: false, estimatedMinutes: 45 },
-        { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Draft core structure & gather references in English`, completed: false, estimatedMinutes: 90 },
-        { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Incorporate specific task requirements & verify results`, completed: false, estimatedMinutes: 45 },
-        { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Final formatting and submit on student dashboard`, completed: false, estimatedMinutes: 30 }
-      ];
+      // Format title with timing if present
+      const formattedTitle = extractedTime ? `${subject} (${extractedTime})` : subject;
+
+      // Smart tailored subtask templates
+      let subtasks: any[] = [];
+      if (category === "Personal" && (lineLower.includes("wedding") || lineLower.includes("party"))) {
+        subtasks = [
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Plan attire & coordinate travel details`, completed: false, estimatedMinutes: 45 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Prepare wedding greeting or token of congratulations`, completed: false, estimatedMinutes: 30 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Attend & enjoy the celebration event`, completed: false, estimatedMinutes: 180 }
+        ];
+      } else if (category === "Career" && lineLower.includes("interview")) {
+        subtasks = [
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Research company goals, values, and tech stack`, completed: false, estimatedMinutes: 60 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Formulate answers to mock behavioral/tech questions`, completed: false, estimatedMinutes: 90 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Check device, camera, microphone, and stable internet`, completed: false, estimatedMinutes: 20 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Attend interview and follow up with a thank-you note`, completed: false, estimatedMinutes: 60 }
+        ];
+      } else {
+        subtasks = [
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Review criteria details thoroughly`, completed: false, estimatedMinutes: 45 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Draft core outline & gather material resources`, completed: false, estimatedMinutes: 90 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Incorporate feedback & double-check requirements`, completed: false, estimatedMinutes: 45 },
+          { id: `local-sub-${Date.now()}-${Math.random()}`, title: `Final verification and mark as fully completed`, completed: false, estimatedMinutes: 30 }
+        ];
+      }
 
       extractedTasks.push({
         id: `local-task-${Date.now()}-${Math.random()}`,
@@ -271,62 +362,22 @@ export default function SyllabusUploader({ onExtract, isProcessing, setIsProcess
     }
 
     if (extractedTasks.length === 0) {
-      const lower = cleanText.toLowerCase();
-      let hasYesterday = lower.includes("yesterday") || (lower.includes("kal") && (lower.includes("tha") || lower.includes("beeta") || lower.includes("was")));
-      let hasTomorrow = lower.includes("tomorrow") || lower.includes("tommorow") || lower.includes("kal") || lower.includes("parso") || lower.includes("parson");
-
-      if (hasYesterday) {
-        extractedTasks.push({
-          id: `local-task-yest-${Date.now()}`,
-          title: "Academics Revision (Backlog)",
-          description: `Auto-parsed task due yesterday: "${cleanText}"`,
-          originalDeadline: getOffsetDateStr(-1),
-          priority: "high",
-          estimatedHours: 3.5,
-          status: "backlog",
-          category: "Academics",
-          tags: [],
-          subtasks: [
-            { id: `sub-yest-1-${Date.now()}`, title: "Review instructions and guidelines", completed: false, estimatedMinutes: 45 },
-            { id: `sub-yest-2-${Date.now()}`, title: "Draft core sections to clear backlog", completed: false, estimatedMinutes: 120 },
-            { id: `sub-yest-3-${Date.now()}`, title: "Review and submit", completed: false, estimatedMinutes: 45 }
-          ]
-        });
-      } else if (hasTomorrow) {
-        extractedTasks.push({
-          id: `local-task-tom-${Date.now()}`,
-          title: "Core Preparation Objective",
-          description: `Scheduled target due tomorrow: "${cleanText}"`,
-          originalDeadline: getOffsetDateStr(1),
-          priority: "high",
-          estimatedHours: 4,
-          status: "backlog",
-          category: "Project",
-          tags: [],
-          subtasks: [
-            { id: `sub-tom-1-${Date.now()}`, title: "Gather reference materials", completed: false, estimatedMinutes: 60 },
-            { id: `sub-tom-2-${Date.now()}`, title: "Solve key problem sets or code segments", completed: false, estimatedMinutes: 120 },
-            { id: `sub-tom-3-${Date.now()}`, title: "Verify with syllabus checklists", completed: false, estimatedMinutes: 60 }
-          ]
-        });
-      } else {
-        extractedTasks.push({
-          id: `local-task-today-${Date.now()}`,
-          title: "Syllabus Extraction Milestone",
-          description: `Extracted scheduled objective: "${cleanText}"`,
-          originalDeadline: getOffsetDateStr(0),
-          priority: "medium",
-          estimatedHours: 3,
-          status: "backlog",
-          category: "Academics",
-          tags: [],
-          subtasks: [
-            { id: `sub-tod-1-${Date.now()}`, title: "Establish work setup", completed: false, estimatedMinutes: 30 },
-            { id: `sub-tod-2-${Date.now()}`, title: "Perform deep work focus sprint", completed: false, estimatedMinutes: 120 },
-            { id: `sub-tod-3-${Date.now()}`, title: "Final submission and validation", completed: false, estimatedMinutes: 30 }
-          ]
-        });
-      }
+      extractedTasks.push({
+        id: `local-task-today-${Date.now()}`,
+        title: "Syllabus Extraction Milestone",
+        description: `Extracted scheduled objective: "${cleanText}"`,
+        originalDeadline: getOffsetDateStr(0),
+        priority: "medium",
+        estimatedHours: 3,
+        status: "backlog",
+        category: "Academics",
+        tags: [],
+        subtasks: [
+          { id: `sub-tod-1-${Date.now()}`, title: "Establish work setup", completed: false, estimatedMinutes: 30 },
+          { id: `sub-tod-2-${Date.now()}`, title: "Perform deep work focus sprint", completed: false, estimatedMinutes: 120 },
+          { id: `sub-tod-3-${Date.now()}`, title: "Final submission and validation", completed: false, estimatedMinutes: 30 }
+        ]
+      });
     }
 
     return extractedTasks;

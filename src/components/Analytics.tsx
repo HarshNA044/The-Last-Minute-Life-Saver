@@ -11,7 +11,11 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
-  TrendingDown
+  TrendingDown,
+  Flame,
+  ShieldAlert,
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -23,7 +27,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend,
-  Bar
+  Bar,
+  BarChart,
+  Cell,
+  ReferenceLine
 } from 'recharts';
 import { Task } from '../types';
 
@@ -35,6 +42,14 @@ interface AnalyticsProps {
 export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
   const [viewMode, setViewMode] = useState<'daywise' | 'monthwise'>('daywise');
   const [showHelp, setShowHelp] = useState(false);
+  
+  const [timelineSelectedDayStr, setTimelineSelectedDayStr] = useState<string>(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const dStr = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${dStr}`;
+  });
   
   // Dynamic helper for today's default date representation
   const getTodayOffsetStr = (offset: number = 0) => {
@@ -268,6 +283,62 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
       rate
     };
   };
+
+  // Construct 7-day upcoming weekly timeline & danger zones
+  const getTimelineData = () => {
+    const today = new Date();
+    const data = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const y = d.getFullYear();
+      const m = (d.getMonth() + 1).toString().padStart(2, '0');
+      const day = d.getDate().toString().padStart(2, '0');
+      const dateKey = `${y}-${m}-${day}`;
+
+      const dayTasks = tasks.filter(t => getNormalizedDate(t.originalDeadline) === dateKey);
+      const activeTasks = dayTasks.filter(t => t.status !== 'completed');
+
+      const workloadHours = activeTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+      const taskCount = activeTasks.length;
+      const hasCritical = activeTasks.some(t => t.priority === 'critical' || t.priority === 'high');
+
+      let dangerLevel: 'safe' | 'warning' | 'danger' = 'safe';
+      let dangerLabel = 'Safe Zone';
+      let advice = 'All calm here! Great day to build some buffer or decompress.';
+
+      if (workloadHours > 4 || hasCritical) {
+        dangerLevel = 'danger';
+        dangerLabel = 'CRITICAL DANGER ZONE';
+        advice = 'Extremely high workload or critical deadline detected. Put down the video games, schedule a 25/5 Pomodoro power play, and crush this backlog!';
+      } else if (workloadHours > 0) {
+        dangerLevel = 'warning';
+        dangerLabel = 'MODERATE INTENSITY';
+        advice = 'Moderate active load due. Use the "Eat the Frog" technique and tackle your most challenging subtask first while your focus is fresh.';
+      }
+
+      const weekdayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      data.push({
+        dateKey,
+        name: `${weekdayLabel} ${dateLabel}`,
+        weekday: weekdayLabel,
+        workloadHours,
+        taskCount,
+        dangerLevel,
+        dangerLabel,
+        advice,
+        tasks: dayTasks
+      });
+    }
+
+    return data;
+  };
+
+  const timelineData = getTimelineData();
+  const selectedTimelineDayData = timelineData.find(d => d.dateKey === timelineSelectedDayStr) || timelineData[0];
 
   const dayMetrics = getSelectedDayMetrics();
   const monthMetrics = getSelectedMonthMetrics();
@@ -646,6 +717,277 @@ export default function Analytics({ tasks, onAddSystemLog }: AnalyticsProps) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* --- Weekly Deadline Timeline & Danger Zones Section --- */}
+      <div className="border-t border-neutral-800/60 my-6 pt-6" id="weekly-danger-zones-section">
+        
+        {/* Section Title with Animated Flame */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-red-950/40 border border-red-500/20">
+              <Flame className="w-5 h-5 text-red-500 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-sm font-sans font-bold text-neutral-200 uppercase tracking-wider flex items-center gap-2">
+                Weekly Deadline Timeline & Danger Zones
+                <span className="text-[10px] font-mono font-normal lowercase bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">
+                  live weekly forecast
+                </span>
+              </h3>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Calculates pending hours of work due each day. Avoid cramming sessions before overlapping project submissions.
+              </p>
+            </div>
+          </div>
+          
+          {/* Quick Help Legend */}
+          <div className="flex items-center gap-3 bg-neutral-950 p-2 rounded-xl border border-neutral-850/60 text-[10px] font-mono self-start md:self-auto">
+            <span className="text-neutral-500">Intensity Legend:</span>
+            <span className="flex items-center gap-1 text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Safe
+            </span>
+            <span className="flex items-center gap-1 text-amber-400">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Moderate
+            </span>
+            <span className="flex items-center gap-1 text-red-400 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              Danger Zone
+            </span>
+          </div>
+        </div>
+
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          
+          {/* 1. Bar Chart Visualization */}
+          <div className="lg:col-span-7 bg-neutral-950/40 border border-neutral-850/60 rounded-2xl p-4 flex flex-col justify-between" id="danger-zones-chart-wrapper">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-red-500" />
+                Workload Intensity Profile (Next 7 Days)
+              </span>
+              <span className="text-[10px] font-mono text-neutral-500">
+                Click any bar to drill-down
+              </span>
+            </div>
+
+            {/* Recharts BarChart rendering weekly forecast */}
+            <div className="h-[210px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={timelineData}
+                  margin={{ top: 10, right: 5, left: -32, bottom: 0 }}
+                  onClick={(data: any) => {
+                    if (data && data.activePayload && data.activePayload[0]) {
+                      setTimelineSelectedDayStr(data.activePayload[0].payload.dateKey);
+                    }
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#525252"
+                    fontSize={9}
+                    tickLine={false}
+                    dy={10}
+                    tickFormatter={(val) => val.split(' ')[0] + ' ' + val.split(' ')[2]} // Shorten labels
+                  />
+                  <YAxis 
+                    stroke="#525252"
+                    fontSize={10}
+                    tickLine={false}
+                    allowDecimals={false}
+                    dx={-5}
+                    label={{ value: 'Estimated Work Hours Due', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#525252', fontSize: 9 }, offset: 10 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: '#ffffff', opacity: 0.05 }}
+                    contentStyle={{
+                      backgroundColor: '#171717',
+                      borderColor: '#404040',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontFamily: 'sans-serif'
+                    }}
+                    formatter={(value: any) => [`${value} hours due`, 'Active Workload']}
+                    labelFormatter={(label) => `Forecast for ${label}`}
+                  />
+                  
+                  {/* Danger Threshold marker */}
+                  <ReferenceLine 
+                    y={4} 
+                    stroke="#ef4444" 
+                    strokeDasharray="4 4" 
+                    strokeWidth={1}
+                    label={{ 
+                      value: "Danger Threshold (4h)", 
+                      fill: "#ef4444", 
+                      fontSize: 8, 
+                      position: "top", 
+                      style: { letterSpacing: '0.05em', fontWeight: 600 } 
+                    }} 
+                  />
+
+                  <Bar 
+                    dataKey="workloadHours" 
+                    radius={[6, 6, 0, 0]} 
+                    maxBarSize={40}
+                    cursor="pointer"
+                  >
+                    {timelineData.map((entry, index) => {
+                      const isSelected = entry.dateKey === timelineSelectedDayStr;
+                      let fillHex = '#10b981'; // safe
+                      if (entry.dangerLevel === 'danger') fillHex = '#ef4444';
+                      else if (entry.dangerLevel === 'warning') fillHex = '#f59e0b';
+
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={fillHex}
+                          fillOpacity={isSelected ? 1.0 : 0.6}
+                          stroke={isSelected ? '#ffffff' : 'none'}
+                          strokeWidth={2}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500 mt-2 border-t border-neutral-900 pt-2">
+              <span>Today: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              <span>Select any column to inspect deadlines & trigger SASSTASTIC recommendations.</span>
+            </div>
+          </div>
+
+          {/* 2. Interactive Audit & Sassy Lifesaver Advice Panel */}
+          <div className="lg:col-span-5 flex flex-col justify-between h-full min-h-[290px]" id="danger-zones-advice-panel">
+            
+            {/* Interactive container styled dynamically based on danger level */}
+            <div className={`h-full flex flex-col justify-between border rounded-2xl p-4.5 bg-neutral-950/30 transition-all ${
+              selectedTimelineDayData.dangerLevel === 'danger' 
+                ? 'border-red-500/30 shadow-sm shadow-red-950/20' 
+                : selectedTimelineDayData.dangerLevel === 'warning'
+                ? 'border-amber-500/30'
+                : 'border-emerald-500/20'
+            }`}>
+              
+              {/* Top Banner */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                    Danger Zone Audit & Advice
+                  </span>
+                  
+                  {/* Danger status badge */}
+                  <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                    selectedTimelineDayData.dangerLevel === 'danger'
+                      ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse'
+                      : selectedTimelineDayData.dangerLevel === 'warning'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {selectedTimelineDayData.dangerLevel === 'danger' && <Flame className="w-2.5 h-2.5" />}
+                    {selectedTimelineDayData.dangerLevel === 'warning' && <AlertTriangle className="w-2.5 h-2.5" />}
+                    {selectedTimelineDayData.dangerLevel === 'safe' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                    {selectedTimelineDayData.dangerLabel}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2 mt-1">
+                  <h4 className="text-sm font-sans font-bold text-neutral-100">
+                    {selectedTimelineDayData.name}
+                  </h4>
+                  <span className="text-xs font-mono text-neutral-500">
+                    ({selectedTimelineDayData.workloadHours}h due • {selectedTimelineDayData.taskCount} active items)
+                  </span>
+                </div>
+              </div>
+
+              {/* Task Deadlines due on selected day */}
+              <div className="my-3.5 flex-1">
+                <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-2">
+                  Deadlines Scheduled:
+                </span>
+                
+                {selectedTimelineDayData.tasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center p-5 border border-dashed border-neutral-850 rounded-xl bg-neutral-900/15">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-500/80 mb-1.5" />
+                    <span className="text-[11px] font-sans text-neutral-300 font-medium">No deadlines due!</span>
+                    <span className="text-[9px] font-mono text-neutral-500 mt-0.5">Sassy Forecast: Complete calm. Go touch grass or catch up on sleep!</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[145px] overflow-y-auto pr-1">
+                    {selectedTimelineDayData.tasks.map((task) => (
+                      <div 
+                        key={task.id} 
+                        className={`flex items-center justify-between gap-2.5 bg-neutral-900/40 border p-2.5 rounded-xl text-left ${
+                          task.priority === 'critical' ? 'border-red-500/20' : 'border-neutral-800'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-[8px] font-mono font-bold uppercase px-1 rounded ${
+                              task.priority === 'critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              task.priority === 'high' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                              'bg-neutral-800 text-neutral-400'
+                            }`}>
+                              {task.priority}
+                            </span>
+                            <span className="text-[8px] font-mono text-neutral-500 bg-neutral-950 px-1 py-0.5 rounded-full border border-neutral-850">
+                              {task.category || 'Work'}
+                            </span>
+                          </div>
+                          <span className="text-xs font-sans text-neutral-200 font-medium truncate" title={task.title}>
+                            {task.title}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-mono font-bold text-neutral-300">{task.estimatedHours || 2}h</span>
+                          <p className="text-[8px] font-mono text-neutral-500 mt-0.5 uppercase">{task.status}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sassy AI Advice Box */}
+              <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                selectedTimelineDayData.dangerLevel === 'danger'
+                  ? 'bg-red-500/5 border-red-500/20 text-red-300/90'
+                  : selectedTimelineDayData.dangerLevel === 'warning'
+                  ? 'bg-amber-500/5 border-amber-500/20 text-amber-300/90'
+                  : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-300/90'
+              }`}>
+                <div className="mt-0.5 shrink-0">
+                  {selectedTimelineDayData.dangerLevel === 'danger' && <ShieldAlert className="w-4 h-4 text-red-400 animate-bounce" />}
+                  {selectedTimelineDayData.dangerLevel === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                  {selectedTimelineDayData.dangerLevel === 'safe' && <Sparkles className="w-4 h-4 text-emerald-400" />}
+                </div>
+                <div>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider block mb-0.5 opacity-70">
+                    Sassy Lifesaver Forecast:
+                  </span>
+                  <p className="text-[10px] font-sans leading-relaxed">
+                    {selectedTimelineDayData.dangerLevel === 'danger' && "🚨 CODE RED WARNING: "}
+                    {selectedTimelineDayData.dangerLevel === 'warning' && "⚠️ FOCUS ADVICE: "}
+                    {selectedTimelineDayData.dangerLevel === 'safe' && "✨ STATUS CALM: "}
+                    {selectedTimelineDayData.advice}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
   );
 }

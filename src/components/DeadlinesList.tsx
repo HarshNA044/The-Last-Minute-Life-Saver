@@ -142,40 +142,153 @@ export default function DeadlinesList({
       return `${y}-${m}-${day}`;
     };
 
-    let offset = 0;
-    let tDeadline = getOffsetDateStr(0);
+    const parseDateFromString = (str: string): string | null => {
+      const strLower = str.toLowerCase();
+      
+      const regexDayMonth = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i;
+      const matchDayMonth = str.match(regexDayMonth);
+      
+      const regexMonthDay = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i;
+      const matchMonthDay = str.match(regexMonthDay);
+      
+      const regexNumeric = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/;
+      const matchNumeric = str.match(regexNumeric);
 
-    if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
-      offset = -1;
-      tDeadline = getOffsetDateStr(-1);
-    } else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
-      if (lineLower.includes("parso") || lineLower.includes("parson")) {
-        offset = 2;
-      } else {
-        offset = 1;
+      const monthsMap: Record<string, number> = {
+        january: 0, jan: 0,
+        february: 1, feb: 1,
+        march: 2, mar: 2,
+        april: 3, apr: 3,
+        may: 4,
+        june: 5, jun: 5,
+        july: 6, jul: 6,
+        august: 7, aug: 7,
+        september: 8, sep: 8, sept: 8,
+        october: 9, oct: 9,
+        november: 10, nov: 10,
+        december: 11, dec: 11
+      };
+
+      let targetDate: Date | null = null;
+      const currentYear = new Date().getFullYear();
+
+      if (matchDayMonth) {
+        const day = parseInt(matchDayMonth[1], 10);
+        const monthStr = matchDayMonth[2].toLowerCase();
+        const monthIdx = monthsMap[monthStr];
+        if (monthIdx !== undefined && day >= 1 && day <= 31) {
+          targetDate = new Date(currentYear, monthIdx, day, 12, 0, 0);
+        }
+      } else if (matchMonthDay) {
+        const monthStr = matchMonthDay[1].toLowerCase();
+        const day = parseInt(matchMonthDay[2], 10);
+        const monthIdx = monthsMap[monthStr];
+        if (monthIdx !== undefined && day >= 1 && day <= 31) {
+          targetDate = new Date(currentYear, monthIdx, day, 12, 0, 0);
+        }
+      } else if (matchNumeric) {
+        const num1 = parseInt(matchNumeric[1], 10);
+        const num2 = parseInt(matchNumeric[2], 10);
+        let year = parseInt(matchNumeric[3], 10);
+        if (year < 100) year += 2000;
+
+        if (num2 <= 12 && num1 <= 31) {
+          targetDate = new Date(year, num2 - 1, num1, 12, 0, 0);
+        } else if (num1 <= 12 && num2 <= 31) {
+          targetDate = new Date(year, num1 - 1, num2, 12, 0, 0);
+        }
       }
-      tDeadline = getOffsetDateStr(offset);
+
+      if (targetDate && !isNaN(targetDate.getTime())) {
+        const y = targetDate.getFullYear();
+        const m = (targetDate.getMonth() + 1).toString().padStart(2, "0");
+        const d = targetDate.getDate().toString().padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      return null;
+    };
+
+    const parseTimeFromString = (str: string): string | null => {
+      const matchTime = str.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+      if (matchTime) {
+        const hour = matchTime[1];
+        const min = matchTime[2] || "00";
+        const ampm = matchTime[3].toUpperCase();
+        return `${hour}:${min} ${ampm}`;
+      }
+      return null;
+    };
+
+    let tDeadline = getOffsetDateStr(2); // default to 2 days out
+    let foundRelative = false;
+
+    // First try absolute date extraction
+    const absoluteDate = parseDateFromString(transcript);
+    if (absoluteDate) {
+      tDeadline = absoluteDate;
+      foundRelative = true;
     } else {
+      if (lineLower.includes("yesterday") || (lineLower.includes("kal") && (lineLower.includes("tha") || lineLower.includes("beeta") || lineLower.includes("was")))) {
+        tDeadline = getOffsetDateStr(-1);
+        foundRelative = true;
+      } else if (lineLower.includes("tomorrow") || lineLower.includes("tommorow") || lineLower.includes("kal") || lineLower.includes("parso") || lineLower.includes("parson")) {
+        const offset = (lineLower.includes("parso") || lineLower.includes("parson")) ? 2 : 1;
+        tDeadline = getOffsetDateStr(offset);
+        foundRelative = true;
+      } else if (lineLower.includes("today") || lineLower.includes("aaj") || lineLower.includes("now") || lineLower.includes("abhibhi")) {
+        tDeadline = getOffsetDateStr(0);
+        foundRelative = true;
+      }
+    }
+
+    if (!foundRelative) {
       const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
       const foundDayIdx = days.findIndex(d => lineLower.includes(d));
       if (foundDayIdx !== -1) {
         const todayDay = today.getDay();
         let targetOffset = foundDayIdx - todayDay;
         if (targetOffset <= 0) targetOffset += 7;
-        offset = targetOffset;
-        tDeadline = getOffsetDateStr(offset);
+        tDeadline = getOffsetDateStr(targetOffset);
       }
     }
 
-    // Detect category/priority/estimated hours
-    let tTitle = "Voice Task";
-    let tDesc = `Created from voice transcript: "${transcript}"`;
+    const extractedTime = parseTimeFromString(transcript);
+
+    // Clean title
+    let tTitle = transcript;
+    tTitle = tTitle.replace(/^(?:i\s+have\s+to\s+go\s+in|i\s+have\s+to|i\s+need\s+to|we\s+need\s+to|please|schedule|add|create|and\s+have|have\s+an?|going\s+to)\s+/i, "");
+    tTitle = tTitle.replace(/\s+on\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i, "");
+    tTitle = tTitle.replace(/\s+on\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?\b/i, "");
+    tTitle = tTitle.replace(/\s+timing\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i, "");
+    tTitle = tTitle.replace(/\s+(?:at|on)?\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i, "");
+    tTitle = tTitle.replace(/\s+on\s+2\d{3}-\d{2}-\d{2}\b/i, "");
+    tTitle = tTitle.replace(/\s+on\s+(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i, "");
+
+    tTitle = tTitle.trim();
+    tTitle = tTitle.replace(/^[-*•+\s]+/, "");
+    if (tTitle.length > 0) {
+      tTitle = tTitle.charAt(0).toUpperCase() + tTitle.slice(1);
+    } else {
+      tTitle = "Voice Task";
+    }
+
     let tCategory = "Work";
     let tPriority = "medium";
     let tHours = 2;
     let subtaskLines: string[] = ["Review requirements", "Implement target modules", "Double check submission details"];
 
-    if (lineLower.includes("physics") || lineLower.includes("lab") || lineLower.includes("bhautik")) {
+    if (lineLower.includes("wedding") || lineLower.includes("marriage") || lineLower.includes("shadi") || lineLower.includes("party")) {
+      tCategory = "Personal";
+      tPriority = "high";
+      tHours = 4;
+      subtaskLines = ["Plan attire & coordinate travel details", "Prepare wedding greeting/token", "Attend & enjoy the celebration"];
+    } else if (lineLower.includes("interview") || lineLower.includes("job") || lineLower.includes("placement")) {
+      tCategory = "Career";
+      tPriority = "critical";
+      tHours = 3;
+      subtaskLines = ["Research company background & goals", "Prepare stories for common behavioral questions", "Join lobby 5 mins early and keep layout clean"];
+    } else if (lineLower.includes("physics") || lineLower.includes("lab") || lineLower.includes("bhautik")) {
       tTitle = "Physics Assignment";
       tCategory = "Academics";
       tPriority = "high";
@@ -193,20 +306,17 @@ export default function DeadlinesList({
       tPriority = "high";
       tHours = 5;
       subtaskLines = ["Outline database schemas", "Write server controllers", "Execute end-to-end sandbox tests"];
-    } else {
-      const cleanWord = transcript.replace(/^(add|create|schedule|make|please|mujhe)\s+/i, "");
-      const words = cleanWord.split(/\s+/).filter(w => w.trim().length > 0).slice(0, 4);
-      if (words.length > 0) {
-        tTitle = words.join(" ");
-        tTitle = tTitle.charAt(0).toUpperCase() + tTitle.slice(1);
-      }
+    }
+
+    if (extractedTime) {
+      tTitle = `${tTitle} (${extractedTime})`;
     }
 
     return {
       success: true,
       task: {
         title: tTitle,
-        description: tDesc,
+        description: `Created from voice transcript: "${transcript}"`,
         category: tCategory,
         priority: tPriority,
         estimatedHours: tHours,
